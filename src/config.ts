@@ -1,8 +1,5 @@
 import * as t from 'io-ts'
 
-/**
- * The portion of Identity Service config that is required by ATB client.
- */
 const identityService = t.type({
   region: t.string,
   poolId: t.string,
@@ -10,8 +7,24 @@ const identityService = t.type({
   staticDataBucket: t.string,
 })
 
-export const Config = t.type({
+/**
+ * The portion of Identity Service config that is required by ATB client.
+ */
+export const IotsConfig = t.type({
   identityService,
 })
 
-export type Config = t.TypeOf<typeof Config>
+export type IotsConfig = t.TypeOf<typeof IotsConfig>
+
+/**
+ * The SDK Config required for {@link SudoAdTrackerBlockerClient}.
+ * @see https://docs.sudoplatform.com/guides/getting-started#step-2-download-the-sdk-configuration-file
+ */
+export interface Config {
+  identityService: {
+    region: string
+    poolId: string
+    identityPoolId: string
+    staticDataBucket: string
+  }
+}

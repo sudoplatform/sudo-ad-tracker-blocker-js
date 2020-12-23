@@ -2,8 +2,28 @@ import urlparse from 'url-parse'
 
 const scheme = /^\w+:\/\//
 
+/**
+ * A blocking exception.
+ * When added to the {@link SudoAdTrackerBlockerClient} exceptions list,
+ * exceptions will prevent all blocking from occuring for a single
+ * source page (type=page), or on any page for a source
+ * domain (type=domain).
+ * @see {@link SudoAdTrackerBlockerClient.getExceptions}
+ * @see {@link SudoAdTrackerBlockerClient.addExceptions}
+ * @see {@link SudoAdTrackerBlockerClient.removeExceptions}
+ * @see {@link SudoAdTrackerBlockerClient.removeAllExceptions}
+ */
 export interface FilterException {
+  /**
+   * A `page` exception can be added to prevent blocking on a single web page.
+   * A `host` exception will prevent blocking on all web pages for a domain or IP address.
+   */
   type: 'host' | 'page'
+
+  /**
+   * The exception source, e.g.
+   * `"exemptdomain.com"`, `"exemptdomain.com/singlepage"`
+   **/
   source: string
 }
 

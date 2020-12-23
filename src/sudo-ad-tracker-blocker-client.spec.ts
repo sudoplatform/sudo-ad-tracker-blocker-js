@@ -2,14 +2,14 @@ import fs from 'fs'
 import path from 'path'
 
 import { nullLogger } from '../tests/unit/null-logger'
-import {
-  AdTrackerBlockerClient,
-  AdTrackerBlockerClientProps,
-} from './ad-tracker-blocker-client'
 import { normalizeExceptionSources } from './filter-exceptions'
 import { MockRuleSetProvider } from './ruleset-providers/mock-ruleset-provider'
 import { RulesetType } from './ruleset-type'
 import { MemoryStorageProvider } from './storage-providers/memory-storage-provider'
+import {
+  SudoAdTrackerBlockerClient,
+  SudoAdTrackerBlockerClientProps,
+} from './sudo-ad-tracker-blocker-client'
 import { initWasm } from './wasm'
 
 const fetchSpy = jest.fn()
@@ -24,7 +24,7 @@ fetchSpy.mockResolvedValue({
 
 global.fetch = fetchSpy
 
-const testProps: AdTrackerBlockerClientProps = {
+const testProps: SudoAdTrackerBlockerClientProps = {
   config: {} as any,
   sudoUserClient: {} as any,
   rulesetProvider: new MockRuleSetProvider(),
@@ -37,16 +37,16 @@ beforeAll(async () => {
   )
 })
 
-describe('AdTrackerBlockerClient', () => {
+describe('SudoAdTrackerBlockerClient', () => {
   describe('construction', () => {
     it('should start with initializing status', async () => {
-      const atbClient = new AdTrackerBlockerClient(testProps)
+      const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
       expect(atbClient.status).toBe('preparing')
     })
 
     it('should go to ready after initializing status', async () => {
-      const atbClient = new AdTrackerBlockerClient(testProps)
+      const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
       // This awaits this.engine
       await atbClient.checkUrl('http://something.com')
@@ -59,7 +59,7 @@ describe('AdTrackerBlockerClient', () => {
       const waitForStatus = new Promise((resolve) => {
         resolveStatus = resolve
       })
-      const atbClient = new AdTrackerBlockerClient({
+      const atbClient = new SudoAdTrackerBlockerClient({
         ...testProps,
         onStatusChanged: () => resolveStatus(),
       })
@@ -83,7 +83,7 @@ describe('AdTrackerBlockerClient', () => {
     `(
       'should check urls according to mock rule set rules',
       async ({ url, expectedResult }) => {
-        const atbClient = new AdTrackerBlockerClient(testProps)
+        const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
         const result = await atbClient.checkUrl(url)
         expect(result).toBe(expectedResult)
@@ -91,7 +91,7 @@ describe('AdTrackerBlockerClient', () => {
     )
 
     it('should throw if `url` arg is not a valid URL', async () => {
-      const atbClient = new AdTrackerBlockerClient(testProps)
+      const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
       await expect(atbClient.checkUrl('buybuybuy.com')).rejects.toThrow(
         '`url` is not a valid URL',
@@ -99,7 +99,7 @@ describe('AdTrackerBlockerClient', () => {
     })
 
     it('should throw if `url` arg is not a valid scheme', async () => {
-      const atbClient = new AdTrackerBlockerClient(testProps)
+      const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
       await expect(atbClient.checkUrl('ftp://buybuybuy.com')).rejects.toThrow(
         '`url` must be of a valid scheme',
@@ -108,7 +108,7 @@ describe('AdTrackerBlockerClient', () => {
   })
 
   it('should get rulesets', async () => {
-    const atbClient = new AdTrackerBlockerClient(testProps)
+    const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
     const result = await atbClient.listRulesets()
 
@@ -136,7 +136,7 @@ describe('AdTrackerBlockerClient', () => {
           "Cache key that should be a date string but those don't play nice in tests...and stuff",
       },
     })
-    const atbClient = new AdTrackerBlockerClient(testProps)
+    const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
     await atbClient.updateRulesets()
 
@@ -154,7 +154,7 @@ describe('AdTrackerBlockerClient', () => {
     `(
       'should add a "Host" (domain) exception',
       async ({ type, source, testUrl, sourceUrl, expectedResult }) => {
-        const atbClient = new AdTrackerBlockerClient(testProps)
+        const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
         await atbClient.addExceptions([{ type, source }])
 
@@ -175,7 +175,7 @@ describe('AdTrackerBlockerClient', () => {
     `(
       'should add a Page exception',
       async ({ type, source, testUrl, sourceUrl, expectedResult }) => {
-        const atbClient = new AdTrackerBlockerClient(testProps)
+        const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
         await atbClient.addExceptions([{ type, source }])
 
@@ -192,7 +192,7 @@ describe('AdTrackerBlockerClient', () => {
         JSON.stringify(['federation.com']),
       )
 
-      const atbClient = new AdTrackerBlockerClient({
+      const atbClient = new SudoAdTrackerBlockerClient({
         ...testProps,
         storageProvider,
       })
@@ -221,7 +221,7 @@ describe('AdTrackerBlockerClient', () => {
 
   describe('getExceptions', () => {
     it('should return an empty array when no exceptions have been set', async () => {
-      const atbClient = new AdTrackerBlockerClient(testProps)
+      const atbClient = new SudoAdTrackerBlockerClient(testProps)
       expect(await atbClient.getExceptions()).toEqual([])
     })
 
@@ -231,7 +231,7 @@ describe('AdTrackerBlockerClient', () => {
         'exceptions',
         JSON.stringify(['exception1.com', 'exception2.com']),
       )
-      const atbClient = new AdTrackerBlockerClient({
+      const atbClient = new SudoAdTrackerBlockerClient({
         ...testProps,
         storageProvider,
       })
@@ -256,7 +256,7 @@ describe('AdTrackerBlockerClient', () => {
         'exceptions',
         JSON.stringify(['exception1.com', 'exception2.com', 'anonyome.com']),
       )
-      const atbClient = new AdTrackerBlockerClient({
+      const atbClient = new SudoAdTrackerBlockerClient({
         ...testProps,
         storageProvider,
       })
@@ -283,7 +283,7 @@ describe('AdTrackerBlockerClient', () => {
         'exceptions',
         JSON.stringify(['exception1.com', 'exception2.com', 'exception3.com']),
       )
-      const atbClient = new AdTrackerBlockerClient({
+      const atbClient = new SudoAdTrackerBlockerClient({
         ...testProps,
         storageProvider,
       })
@@ -300,7 +300,7 @@ describe('AdTrackerBlockerClient', () => {
     })
 
     it('should remove exceptions with html entities', async () => {
-      const atbClient = new AdTrackerBlockerClient(testProps)
+      const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
       await atbClient.addExceptions([{ source: '%', type: 'host' }])
 
@@ -329,7 +329,7 @@ describe('AdTrackerBlockerClient', () => {
         'exceptions',
         JSON.stringify(['exception1.com', 'exception2.com', 'exception3.com']),
       )
-      const atbClient = new AdTrackerBlockerClient({
+      const atbClient = new SudoAdTrackerBlockerClient({
         ...testProps,
         storageProvider,
       })
@@ -342,7 +342,7 @@ describe('AdTrackerBlockerClient', () => {
   describe('setActiveRulesets()', () => {
     it('should set active lists in storage provider and set status to updating', async () => {
       const storageProvider = new MemoryStorageProvider()
-      const atbClient = new AdTrackerBlockerClient({
+      const atbClient = new SudoAdTrackerBlockerClient({
         ...testProps,
         storageProvider,
       })
@@ -368,7 +368,7 @@ describe('AdTrackerBlockerClient', () => {
         'activeRulesets',
         JSON.stringify(['privacy', 'social']),
       )
-      const atbClient = new AdTrackerBlockerClient({
+      const atbClient = new SudoAdTrackerBlockerClient({
         ...testProps,
         storageProvider,
       })
@@ -380,7 +380,7 @@ describe('AdTrackerBlockerClient', () => {
 
   describe('reset()', () => {
     it('should reset exceptions to empty array and rule sets back to default', async () => {
-      const atbClient = new AdTrackerBlockerClient(testProps)
+      const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
       // Update user settings
       await atbClient.setActiveRulesets([RulesetType.AdBlocking])

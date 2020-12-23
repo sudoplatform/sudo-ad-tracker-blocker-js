@@ -7,7 +7,7 @@ import { SudoUserClient } from '@sudoplatform/sudo-user'
 import { isEqual, pullAllWith, uniqWith } from 'lodash'
 
 import { FilterEngine } from '../wasm/filter_engine'
-import { Config } from './config'
+import { Config, IotsConfig } from './config'
 import { FilterException } from './filter-exceptions'
 import {
   findExceptionMatch,
@@ -31,33 +31,34 @@ const activeRulesetsKey = 'activeRulesets'
 const validCheckUrlSchemes = ['https:', 'http:', 'ws:']
 
 /**
- * A Ruleset that can be activated for ad/tracker
+ * A ruleset that can be activated for ad/tracker
  * blocking in the filter engine.
  */
 export type Ruleset = { type: RulesetType; updatedAt: Date }
 
 /**
- * Filter Engine Status.
+ * Status of filtering engine {@link SudoAdTrackerBlockerClient}.
+ * @see {@link SudoAdTrackerBlockerClient.status}.
  */
 export enum Status {
-  /** Filter engine is (re)initializing and is not ready to process calls to `checkUrl()` */
+  /** Client is (re)initializing and is not ready to process calls to `checkUrl()`. */
   Preparing = 'preparing',
 
-  /** Client is initialized and ready to process calls to `checkUrl()` */
+  /** Client is initialized and ready to process calls to `checkUrl()`. */
   Ready = 'ready',
 
-  /**  There was an error initializing the Client and cannot process calls to `checkUrl()` */
+  /**  There was an error initializing the Client and cannot process calls to `checkUrl()`. */
   Error = 'error',
 }
 
 /**
- * The result given when calling checkUrl
+ * The result given when calling {@link SudoAdTrackerBlockerClient.checkUrl}.
  */
 export enum CheckUrlResult {
-  /** The `url` is allowed to be fetched based on active rulesets & exceptions */
+  /** The `url` is allowed to be fetched based on active rulesets & exceptions. */
   Allowed = 'allowed',
 
-  /** The `url` is not allowed to be fetched based on active rulesets & exceptions */
+  /** The `url` is not allowed to be fetched based on active rulesets & exceptions. */
   Blocked = 'blocked',
 }
 
@@ -70,46 +71,57 @@ interface CacheItem {
 }
 
 /**
- * AdTrackerBlockerClient constructor props
+ * {@link SudoAdTrackerBlockerClient} constructor props.
  */
-export interface AdTrackerBlockerClientProps {
+export interface SudoAdTrackerBlockerClientProps {
   /**
-   * Sudo User Client instance, required for authenticated access to SudoPlatform.
+   * `SudoUserClient` instance.
+   * This is required for authenticated access to the Sudo Platform.
+   * @see https://docs.sudoplatform.com/guides/users/integrate-the-user-sdk#integrate-the-js-sdk
    */
   sudoUserClient: SudoUserClient
 
   /**
-   * SDK Config. If not provided, then DefaultConfigurationManager will be used.
+   * Sudo Platform SDK Config.
+   * If not provided, then DefaultConfigurationManager will be used.
+   * @see https://docs.sudoplatform.com/guides/getting-started#step-2-download-the-sdk-configuration-file
+   * @see https://docs.sudoplatform.com/guides/users/integrate-the-user-sdk#sdk-configuration
    */
   config?: Config
 
   /**
-   * Custom logging implementation. If not provided then default loging will be used.
+   * Custom logging implementation.
+   * If not provided then default logging will be used.
    */
   logger?: Logger
 
   /**
-   * A StorageProvider implementation. MemoryStorageProvider
-   * will be used by default.
+   * A {@link StorageProvider} implementation.
+   * An in-memory implementation is used by default.
    */
   storageProvider?: StorageProvider
 
   /**
-   * Overrides the default RulesetProvider
+   * @internal
+   * Overrides the default ruleset provider.
+   * This is used for testing purposes.
    */
   rulesetProvider?: RulesetProvider
 
   /**
-   * A call back which provides the new status of the filter engine.
-   * @param newStatus New Status of the filter engine
+   * Callback invoked whenever the filtering
+   * status ({@link SudoAdTrackerBlockerClient.status}) changes.
    */
   onStatusChanged?: () => void
 }
 
 /**
- * TODO: Class comments
+ * This is the main class used for Ad/Tracker blocking.
+ * Each instance of `SudoAdTrackerBlockerClient` will contain a filtering engine
+ * that can be configured to use a set of blocking rulesets.
+ * To query the filtering engine, you can call (@link SudoAdTrackerBlockerClient.checkUrl}.
  */
-export class AdTrackerBlockerClient {
+export class SudoAdTrackerBlockerClient {
   private _status: Status = Status.Preparing
   private config: Config
   private storageProvider: StorageProvider
@@ -118,12 +130,14 @@ export class AdTrackerBlockerClient {
   private exceptions: FilterException[] = []
   private logger: Logger
 
-  constructor(private props: AdTrackerBlockerClientProps) {
+  constructor(private props: SudoAdTrackerBlockerClientProps) {
     this.logger = props.logger ?? new DefaultLogger()
 
     this.config =
       props?.config ??
-      DefaultConfigurationManager.getInstance().bindConfigSet<Config>(Config)
+      DefaultConfigurationManager.getInstance().bindConfigSet<IotsConfig>(
+        IotsConfig,
+      )
 
     this.storageProvider = props?.storageProvider ?? new MemoryStorageProvider()
 
@@ -140,14 +154,26 @@ export class AdTrackerBlockerClient {
   }
 
   /**
-   * Filter engine status
+   * Resets the client by clearing cached data and user preferences.
+   */
+  public async reset(): Promise<void> {
+    await Promise.all([
+      this.storageProvider.clearItem(exceptionsStorageKey),
+      this.storageProvider.clearItem(activeRulesetsKey),
+    ])
+
+    this.prepareFilterEngine()
+  }
+
+  /**
+   * Filter engine status.
    */
   public get status(): Status {
     return this._status
   }
 
   /**
-   * Gets all available rulesets and their active status
+   * Gets all available rulesets with associated metadata.
    */
   public async listRulesets(): Promise<Ruleset[]> {
     const rulesets = await this.rulesetProvider.listRulesets()
@@ -159,7 +185,8 @@ export class AdTrackerBlockerClient {
   }
 
   /**
-   * Gets all currently active rulesets
+   * Gets all rulesets that are currently influencing the results
+   * of {@link SudoAdTrackerBlockerClient.checkUrl}.
    */
   public async getActiveRulesets(): Promise<RulesetType[]> {
     const activeRulesetsJson = await this.storageProvider.getItem(
@@ -172,7 +199,7 @@ export class AdTrackerBlockerClient {
   }
 
   /**
-   * Sets which ruleset types are active
+   * Sets which ruleset types are active in the filtering engine.
    */
   public async setActiveRulesets(rulesetTypes: RulesetType[]): Promise<void> {
     await this.storageProvider.setItem(
@@ -184,21 +211,9 @@ export class AdTrackerBlockerClient {
   }
 
   /**
-   * Resets the client back to default exceptions and rulesets
-   */
-  public async reset(): Promise<void> {
-    await Promise.all([
-      this.storageProvider.clearItem(exceptionsStorageKey),
-      this.storageProvider.clearItem(activeRulesetsKey),
-    ])
-
-    this.prepareFilterEngine()
-  }
-
-  /**
-   * Returns true if url and currentUrl match; false if not.
-   * @param url URL to test against current URL
-   * @param currentUrl Current URL
+   * Returns true if `url` and `currentUrl` match; false if not.
+   * @param url URL to test against current URL.
+   * @param currentUrl Current URL.
    * @param resourceType
    */
   public async checkUrl(
@@ -253,7 +268,8 @@ export class AdTrackerBlockerClient {
   }
 
   /**
-   * Retrieves current exceptions
+   * Retrieves current filtering exceptions that are influencing
+   * the behavior of {@link SudoAdTrackerBlockerClient.checkUrl}.
    */
   public async getExceptions(): Promise<FilterException[]> {
     const sourcesJson = await this.storageProvider.getItem(exceptionsStorageKey)
@@ -265,8 +281,7 @@ export class AdTrackerBlockerClient {
   }
 
   /**
-   * Adds items from the exception list
-   * @param urls An array of URLs or domains
+   * Adds items to the exceptions list.
    */
   public async addExceptions(exceptions: FilterException[]): Promise<void> {
     const currentExceptions = await this.getExceptions()
@@ -288,7 +303,7 @@ export class AdTrackerBlockerClient {
   }
 
   /**
-   * Removes items from the exception list
+   * Removes specific exceptions from the exceptions list.
    */
   public async removeExceptions(exceptions: FilterException[]): Promise<void> {
     const currentExceptions = await this.getExceptions()
@@ -311,7 +326,7 @@ export class AdTrackerBlockerClient {
   }
 
   /**
-   * Removes all filter exceptions from the exception list
+   * Removes all exceptions from the exceptions list.
    */
   public async removeAllExceptions(): Promise<void> {
     await this.storageProvider.clearItem(exceptionsStorageKey)

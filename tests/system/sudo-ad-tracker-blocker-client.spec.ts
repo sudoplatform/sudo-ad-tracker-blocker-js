@@ -3,7 +3,7 @@ import path from 'path'
 
 import { SudoUserClient } from '@sudoplatform/sudo-user'
 
-import { AdTrackerBlockerClient, RulesetType, initWasm } from '../../lib'
+import { RulesetType, SudoAdTrackerBlockerClient, initWasm } from '../../lib'
 import { logger } from './logger'
 import { registerUser } from './test-registration'
 
@@ -15,9 +15,9 @@ beforeAll(async () => {
   )
 })
 
-describe('AdTrackerBlockerClient', () => {
+describe('SudoAdTrackerBlockerClient', () => {
   it('should initialize with all lists enabled by default', async () => {
-    const client = new AdTrackerBlockerClient({
+    const client = new SudoAdTrackerBlockerClient({
       sudoUserClient: userClient,
       logger,
     })
@@ -52,7 +52,7 @@ describe('AdTrackerBlockerClient', () => {
   })
 
   it('should list rulesets', async () => {
-    const client = new AdTrackerBlockerClient({
+    const client = new SudoAdTrackerBlockerClient({
       sudoUserClient: userClient,
       logger,
     })
@@ -66,7 +66,7 @@ describe('AdTrackerBlockerClient', () => {
   })
 
   it('should set active rulesets', async () => {
-    const client = new AdTrackerBlockerClient({
+    const client = new SudoAdTrackerBlockerClient({
       sudoUserClient: userClient,
     })
 
@@ -104,7 +104,7 @@ describe('AdTrackerBlockerClient', () => {
   })
 
   it('should whitelist a site', async () => {
-    const client = new AdTrackerBlockerClient({
+    const client = new SudoAdTrackerBlockerClient({
       sudoUserClient: userClient,
       logger,
     })
