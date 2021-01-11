@@ -44,7 +44,6 @@
     "url-parse": "^1.4.7"
   },
   "devDependencies": {
-    "@anonyome/dependency-report": "^1.31.0",
     "@babel/cli": "^7.10.5",
     "@babel/core": "^7.10.5",
     "@babel/plugin-proposal-class-properties": "^7.10.4",
