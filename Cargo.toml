@@ -5,7 +5,7 @@ version = "0.1.0"
 categories = ["wasm"]
 readme = "README.md"
 edition = "2018"
-repository = "git@gitlab.tools.anonyome.com:platform/ad-tracker-blocker/ad-tracker-blocker-js.git"
+repository = "https://github.com/sudoplatform/sudo-ad-tracker-blocker-js.git"
 license = "Apache-2.0"
 
 [lib]

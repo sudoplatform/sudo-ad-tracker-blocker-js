@@ -2,7 +2,7 @@
   "name": "@sudoplatform/sudo-ad-tracker-blocker",
   "version": "0.0.0",
   "author": "Anonyome Labs, Inc.",
-  "repository": "git@gitlab.tools.anonyome.com:platform/ad-tracker-blocker/ad-tracker-blocker-js.git",
+  "repository": "https://github.com/sudoplatform/sudo-ad-tracker-blocker-js.git",
   "license": "Apache-2.0",
   "scripts": {
     "lint": "yarn lint:eslint && yarn lint:prettier",

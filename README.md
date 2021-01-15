@@ -1,10 +1,10 @@
-# Sudo Ad Tracker Blocker JS
+# Sudo Ad/Tracker Blocker JS
 
 ## Overview
 
-Sudo Ad Tracker Blocker JS SDK helps developers create secure ad blocking applications.
+Sudo Ad/Tracker Blocker JS SDK helps developers create secure ad blocking applications.
 
-Please see the [Sudo Platform Developer Docs](https://sudoplatform.com/docs) for an overview of Sudo Ad Tracker Blocker JS in the Sudo Platform.
+Please see the [Sudo Platform Developer Docs](https://docs.sudoplatform.com) for an overview of Ad/Tracker Blocking in the Sudo Platform.
 
 ## Version Support
 
@@ -18,7 +18,7 @@ Please see the [Sudo Platform Developer Docs](https://sudoplatform.com/docs) for
 
 ## Integration Instructions
 
-Visit the [section](https://sudoplatform.com/docs) of the Sudo Platform Developer Docs for SDK integration instructions.
+Visit the [Ad/Tracker Blocker section](https://docs.sudoplatform.com/guides/ad-tracker-blocker) of the Sudo Platform Developer Docs for SDK integration instructions.
 
 ## Questions and Support
 
