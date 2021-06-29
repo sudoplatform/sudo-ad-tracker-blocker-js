@@ -2,7 +2,7 @@
   "testEnvironment": "node",
   "setupFilesAfterEnv": ["<rootDir>/tests/setup-unit-tests.ts"],
   "testMatch": ["<rootDir>/src/**/*.spec.ts"],
-  "testPathIgnorePatterns": ["/node_modules/", "/lib/"],
+  "testPathIgnorePatterns": ["/node_modules/", "/lib/", "/gen/"],
   "clearMocks": true,
   "collectCoverageFrom": ["src/**/*.ts", "!**/*.d.ts", "!node_modules/**"],
   "coverageReporters": ["text", "json-summary"],

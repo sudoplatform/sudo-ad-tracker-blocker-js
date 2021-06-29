@@ -1,11 +1,12 @@
 import {
   RulesetContent,
+  RulesetFormat,
   RulesetMetaData,
   RulesetProvider,
 } from '../ruleset-provider'
 import { RulesetType } from '../ruleset-type'
 
-const easylistRulesets: RulesetMetaData[] = [
+export const easylistRulesets: RulesetMetaData[] = [
   {
     type: RulesetType.AdBlocking,
     location: 'easylist.txt',
@@ -25,6 +26,8 @@ const easylistRulesets: RulesetMetaData[] = [
 
 export class EasyListRuleSetProvider implements RulesetProvider {
   private easyListBaseURL = 'https://easylist.to/easylist/'
+
+  public readonly format = RulesetFormat.AdBlockPlus
 
   public async listRulesets(): Promise<RulesetMetaData[]> {
     return easylistRulesets

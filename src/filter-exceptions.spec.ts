@@ -1,7 +1,6 @@
 import {
   FilterException,
   findExceptionMatch,
-  normalizeExceptionSources,
   normalizeExceptions,
 } from './filter-exceptions'
 
@@ -27,47 +26,6 @@ describe('filter-exceptions', () => {
         type,
         source: expectedSource,
       })
-    })
-  })
-
-  describe('normalizeExceptionSources()', () => {
-    it.each`
-      source                               | expectedType | expectedSource
-      ${'https://www.federation.com'}      | ${'host'}    | ${'www.federation.com'}
-      ${'http://www.federation.com'}       | ${'host'}    | ${'www.federation.com'}
-      ${'www.federation.com'}              | ${'host'}    | ${'www.federation.com'}
-      ${'https://federation.com'}          | ${'host'}    | ${'federation.com'}
-      ${'federation.com'}                  | ${'host'}    | ${'federation.com'}
-      ${'federation.com'}                  | ${'host'}    | ${'federation.com'}
-      ${'https://www.federation.com/solo'} | ${'page'}    | ${'www.federation.com/solo'}
-      ${'http://www.federation.com/solo'}  | ${'page'}    | ${'www.federation.com/solo'}
-      ${'www.federation.com/solo'}         | ${'page'}    | ${'www.federation.com/solo'}
-      ${'https://federation.com/solo'}     | ${'page'}    | ${'federation.com/solo'}
-      ${'federation.com/solo'}             | ${'page'}    | ${'federation.com/solo'}
-      ${'federation.com/solo'}             | ${'page'}    | ${'federation.com/solo'}
-      ${'federation.com/'}                 | ${'page'}    | ${'federation.com/'}
-      ${'%.com'}                           | ${'host'}    | ${'%.com'}
-    `(
-      'should return an encoded URL',
-      ({ source, expectedType, expectedSource }) => {
-        const [result] = normalizeExceptionSources([source])
-
-        expect(result).toEqual({
-          type: expectedType,
-          source: expectedSource,
-        })
-      },
-    )
-
-    it.each`
-      source
-      ${'https://www.@#$%^#$.com'}
-      ${'https://@#$%^#$.com'}
-      ${'@#$%^#$.com'}
-    `('should throw when bogus domain', ({ source }) => {
-      expect(() => normalizeExceptionSources([source])).toThrowError(
-        'Could not determine host for exception',
-      )
     })
   })
 

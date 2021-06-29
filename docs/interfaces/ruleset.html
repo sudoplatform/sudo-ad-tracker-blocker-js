@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>CheckUrlResult | @sudoplatform/sudo-ad-tracker-blocker</title>
+	<title>Ruleset | @sudoplatform/sudo-ad-tracker-blocker</title>
 	<meta name="description" content="Documentation for @sudoplatform/sudo-ad-tracker-blocker">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -55,10 +55,10 @@
 					<a href="../modules.html">@sudoplatform/sudo-ad-tracker-blocker</a>
 				</li>
 				<li>
-					<a href="checkurlresult.html">CheckUrlResult</a>
+					<a href="ruleset.html">Ruleset</a>
 				</li>
 			</ul>
-			<h1>Enumeration CheckUrlResult</h1>
+			<h1>Interface Ruleset</h1>
 		</div>
 	</div>
 </header>
@@ -68,55 +68,70 @@
 			<section class="tsd-panel tsd-comment">
 				<div class="tsd-comment tsd-typography">
 					<div class="lead">
-						<p>The result given when calling <a href="../classes/sudoadtrackerblockerclient.html#checkurl">SudoAdTrackerBlockerClient.checkUrl</a>.</p>
+						<p>A ruleset that can be activated for ad/tracker
+						blocking in the filter engine.</p>
 					</div>
 				</div>
+			</section>
+			<section class="tsd-panel tsd-hierarchy">
+				<h3>Hierarchy</h3>
+				<ul class="tsd-hierarchy">
+					<li>
+						<span class="target">Ruleset</span>
+					</li>
+				</ul>
 			</section>
 			<section class="tsd-panel-group tsd-index-group">
 				<h2>Index</h2>
 				<section class="tsd-panel tsd-index-panel">
 					<div class="tsd-index-content">
 						<section class="tsd-index-section ">
-							<h3>Enumeration members</h3>
+							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="checkurlresult.html#allowed" class="tsd-kind-icon">Allowed</a></li>
-								<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="checkurlresult.html#blocked" class="tsd-kind-icon">Blocked</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="ruleset.html#content" class="tsd-kind-icon">content</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="ruleset.html#type" class="tsd-kind-icon">type</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="ruleset.html#updatedat" class="tsd-kind-icon">updated<wbr>At</a></li>
 							</ul>
 						</section>
 					</div>
 				</section>
 			</section>
 			<section class="tsd-panel-group tsd-member-group ">
-				<h2>Enumeration members</h2>
-				<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
-					<a name="allowed" class="tsd-anchor"></a>
-					<h3>Allowed</h3>
-					<div class="tsd-signature tsd-kind-icon">Allowed<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> = &quot;allowed&quot;</span></div>
+				<h2>Properties</h2>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="content" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagOptional">Optional</span> content</h3>
+					<div class="tsd-signature tsd-kind-icon">content<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in sudo-ad-tracker-blocker-client.ts:73</li>
+							<li>Defined in sudo-ad-tracker-blocker-client.ts:50</li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
 						<div class="lead">
-							<p>The <code>url</code> is allowed to be fetched based on active rulesets &amp; exceptions.</p>
+							<p>Not available for ABP lists.</p>
 						</div>
 					</div>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
-					<a name="blocked" class="tsd-anchor"></a>
-					<h3>Blocked</h3>
-					<div class="tsd-signature tsd-kind-icon">Blocked<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> = &quot;blocked&quot;</span></div>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="type" class="tsd-anchor"></a>
+					<h3>type</h3>
+					<div class="tsd-signature tsd-kind-icon">type<span class="tsd-signature-symbol">:</span> <a href="../enums/rulesettype.html" class="tsd-signature-type" data-tsd-kind="Enumeration">RulesetType</a></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in sudo-ad-tracker-blocker-client.ts:76</li>
+							<li>Defined in sudo-ad-tracker-blocker-client.ts:47</li>
 						</ul>
 					</aside>
-					<div class="tsd-comment tsd-typography">
-						<div class="lead">
-							<p>The <code>url</code> is not allowed to be fetched based on active rulesets &amp; exceptions.</p>
-						</div>
-					</div>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="updatedat" class="tsd-anchor"></a>
+					<h3>updated<wbr>At</h3>
+					<div class="tsd-signature tsd-kind-icon">updated<wbr>At<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Date</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in sudo-ad-tracker-blocker-client.ts:48</li>
+						</ul>
+					</aside>
 				</section>
 			</section>
 		</div>
@@ -130,47 +145,50 @@
 			</nav>
 			<nav class="tsd-navigation secondary menu-sticky">
 				<ul class="before-current">
-				</ul>
-				<ul class="current">
-					<li class="current tsd-kind-enum">
-						<a href="checkurlresult.html" class="tsd-kind-icon">Check<wbr>Url<wbr>Result</a>
-						<ul>
-							<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
-								<a href="checkurlresult.html#allowed" class="tsd-kind-icon">Allowed</a>
-							</li>
-							<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
-								<a href="checkurlresult.html#blocked" class="tsd-kind-icon">Blocked</a>
-							</li>
-						</ul>
-					</li>
-				</ul>
-				<ul class="after-current">
 					<li class=" tsd-kind-enum">
-						<a href="rulesetformat.html" class="tsd-kind-icon">Ruleset<wbr>Format</a>
+						<a href="../enums/checkurlresult.html" class="tsd-kind-icon">Check<wbr>Url<wbr>Result</a>
 					</li>
 					<li class=" tsd-kind-enum">
-						<a href="rulesettype.html" class="tsd-kind-icon">Ruleset<wbr>Type</a>
+						<a href="../enums/rulesetformat.html" class="tsd-kind-icon">Ruleset<wbr>Format</a>
 					</li>
 					<li class=" tsd-kind-enum">
-						<a href="status.html" class="tsd-kind-icon">Status</a>
+						<a href="../enums/rulesettype.html" class="tsd-kind-icon">Ruleset<wbr>Type</a>
+					</li>
+					<li class=" tsd-kind-enum">
+						<a href="../enums/status.html" class="tsd-kind-icon">Status</a>
 					</li>
 					<li class=" tsd-kind-class">
 						<a href="../classes/sudoadtrackerblockerclient.html" class="tsd-kind-icon">Sudo<wbr>AdTracker<wbr>Blocker<wbr>Client</a>
 					</li>
 					<li class=" tsd-kind-interface">
-						<a href="../interfaces/config.html" class="tsd-kind-icon">Config</a>
+						<a href="config.html" class="tsd-kind-icon">Config</a>
 					</li>
 					<li class=" tsd-kind-interface">
-						<a href="../interfaces/filterexception.html" class="tsd-kind-icon">Filter<wbr>Exception</a>
+						<a href="filterexception.html" class="tsd-kind-icon">Filter<wbr>Exception</a>
+					</li>
+				</ul>
+				<ul class="current">
+					<li class="current tsd-kind-interface">
+						<a href="ruleset.html" class="tsd-kind-icon">Ruleset</a>
+						<ul>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="ruleset.html#content" class="tsd-kind-icon">content</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="ruleset.html#type" class="tsd-kind-icon">type</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="ruleset.html#updatedat" class="tsd-kind-icon">updated<wbr>At</a>
+							</li>
+						</ul>
+					</li>
+				</ul>
+				<ul class="after-current">
+					<li class=" tsd-kind-interface">
+						<a href="storageprovider.html" class="tsd-kind-icon">Storage<wbr>Provider</a>
 					</li>
 					<li class=" tsd-kind-interface">
-						<a href="../interfaces/ruleset.html" class="tsd-kind-icon">Ruleset</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="../interfaces/storageprovider.html" class="tsd-kind-icon">Storage<wbr>Provider</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="../interfaces/sudoadtrackerblockerclientprops.html" class="tsd-kind-icon">Sudo<wbr>AdTracker<wbr>Blocker<wbr>Client<wbr>Props</a>
+						<a href="sudoadtrackerblockerclientprops.html" class="tsd-kind-icon">Sudo<wbr>AdTracker<wbr>Blocker<wbr>Client<wbr>Props</a>
 					</li>
 					<li class=" tsd-kind-type-alias">
 						<a href="../modules.html#wasminitinput" class="tsd-kind-icon">Wasm<wbr>Init<wbr>Input</a>

@@ -9,5 +9,6 @@ export {
 export { FilterException } from './filter-exceptions'
 export { Config } from './config'
 export { RulesetType } from './ruleset-type'
+export { RulesetFormat } from './ruleset-provider'
 export { StorageProvider } from './storage-provider'
 export { initWasm, WasmInitInput } from './wasm'

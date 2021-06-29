@@ -17,7 +17,20 @@ export interface RulesetContent {
   cacheKey?: string
 }
 
+/**
+ * Ruleset format
+ */
+export enum RulesetFormat {
+  AdBlockPlus = 'adblock-plus',
+  Apple = 'apple',
+}
+
 export interface RulesetProvider {
+  /**
+   * Ruleset data format
+   */
+  format: RulesetFormat
+
   /**
    * Lists all available Rulesets
    */

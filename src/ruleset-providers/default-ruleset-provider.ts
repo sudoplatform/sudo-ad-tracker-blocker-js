@@ -4,13 +4,14 @@ import { CognitoIdentityCredentials } from 'aws-sdk/lib/core'
 
 import {
   RulesetContent,
+  RulesetFormat,
   RulesetMetaData,
   RulesetProvider,
 } from '../ruleset-provider'
 import { RulesetType } from '../ruleset-type'
 
 const s3Region = 'us-east-1'
-const s3Prefix = '/ad-tracker-blocker/filter-lists/adblock-plus/'
+const s3Prefix = '/ad-tracker-blocker/filter-lists/'
 
 const serviceTypeToRuleSetTypeLookup: Record<string, RulesetType> = {
   AD: RulesetType.AdBlocking,
@@ -23,10 +24,15 @@ interface Props {
   poolId: string
   identityPoolId: string
   bucket: string
+  format?: RulesetFormat
 }
 
 export class DefaultRulesetProvider implements RulesetProvider {
-  constructor(private props: Props) {}
+  public readonly format: RulesetFormat
+
+  constructor(private props: Props) {
+    this.format = props.format ?? RulesetFormat.AdBlockPlus
+  }
 
   public async listRulesets(): Promise<RulesetMetaData[]> {
     const s3 = await this.getS3Client()
@@ -34,7 +40,7 @@ export class DefaultRulesetProvider implements RulesetProvider {
     const result = await s3
       .listObjects({
         Bucket: this.props.bucket,
-        Prefix: s3Prefix,
+        Prefix: s3Prefix + this.format + '/',
       })
       .promise()
 
@@ -47,7 +53,7 @@ export class DefaultRulesetProvider implements RulesetProvider {
         throw new Error('Cannot interpret S3 Object result.')
       }
 
-      const [, tail] = Key.split(s3Prefix)
+      const [, tail] = Key.split(s3Prefix + this.format + '/')
       const [serviceType] = tail.split('/')
       const ruleType = serviceTypeToRuleSetTypeLookup[serviceType]
       if (!ruleType) {
@@ -109,6 +115,8 @@ export class DefaultRulesetProvider implements RulesetProvider {
         region: 'us-east-1',
       },
     )
+
+    credentials.clearCachedId()
 
     await credentials.getPromise()
 

@@ -3,7 +3,12 @@ import path from 'path'
 
 import { SudoUserClient } from '@sudoplatform/sudo-user'
 
-import { RulesetType, SudoAdTrackerBlockerClient, initWasm } from '../../lib'
+import {
+  RulesetFormat,
+  RulesetType,
+  SudoAdTrackerBlockerClient,
+  initWasm,
+} from '../../lib'
 import { logger } from './logger'
 import { registerUser } from './test-registration'
 
@@ -31,24 +36,19 @@ describe('SudoAdTrackerBlockerClient', () => {
     ])
 
     // Test ad blocking rule from easylist:
-    await expect(
-      client.checkUrl('https://example.com/!advert_'),
-    ).resolves.toEqual('blocked')
+    await client.update()
+    expect(client.checkUrl('https://example.com/!advert_')).toEqual('blocked')
 
     // Test privacy rule from easyprivacy:
-    await expect(client.checkUrl('https://example.com/admp-')).resolves.toEqual(
-      'blocked',
-    )
+    expect(client.checkUrl('https://example.com/admp-')).toEqual('blocked')
 
     // Test social rule from fanboysocial:
-    await expect(
-      client.checkUrl('https://example.com/button-fb.'),
-    ).resolves.toEqual('blocked')
+    expect(client.checkUrl('https://example.com/button-fb.')).toEqual('blocked')
 
     // Control:
-    await expect(
-      client.checkUrl('https://example.com/anonyome-is-cool'),
-    ).resolves.toEqual('allowed')
+    expect(client.checkUrl('https://example.com/anonyome-is-cool')).toEqual(
+      'allowed',
+    )
   })
 
   it('should list rulesets', async () => {
@@ -57,6 +57,7 @@ describe('SudoAdTrackerBlockerClient', () => {
       logger,
     })
 
+    await client.update()
     const rulesets = await client.listRulesets()
     expect(rulesets).toEqual([
       { type: 'ad-blocking', updatedAt: expect.any(Date) },
@@ -70,6 +71,8 @@ describe('SudoAdTrackerBlockerClient', () => {
       sudoUserClient: userClient,
     })
 
+    await client.update()
+
     // Verify default active rulesets
     await expect(client.getActiveRulesets()).resolves.toEqual([
       RulesetType.AdBlocking,
@@ -78,15 +81,17 @@ describe('SudoAdTrackerBlockerClient', () => {
     ])
 
     // This should be blocked due to AdBlocking ruleset:
-    await expect(
+    expect(
       client.checkUrl(
         'https://example.com/!advert_',
         'https://www.anonyome.com',
       ),
-    ).resolves.toEqual('blocked')
+    ).toEqual('blocked')
 
     // Disable Ad blocking ruleset
     await client.setActiveRulesets([RulesetType.Privacy, RulesetType.Social])
+
+    await client.update()
 
     // Verify getActiveRulesets reports the change correctly
     await expect(client.getActiveRulesets()).resolves.toEqual([
@@ -95,12 +100,12 @@ describe('SudoAdTrackerBlockerClient', () => {
     ])
 
     // This should be now be allowed:
-    await expect(
+    expect(
       client.checkUrl(
         'https://example.com/!advert_',
         'https://www.anonyome.com',
       ),
-    ).resolves.toEqual('allowed')
+    ).toEqual('allowed')
   })
 
   it('should whitelist a site', async () => {
@@ -109,23 +114,71 @@ describe('SudoAdTrackerBlockerClient', () => {
       logger,
     })
 
+    await client.update()
+
     // Without whitelisting, this should be blocked:
-    await expect(
+    expect(
       client.checkUrl(
         'https://example.com/!advert_',
         'https://www.anonyome.com',
       ),
-    ).resolves.toEqual('blocked')
+    ).toEqual('blocked')
 
     // Add whitelist exception
     await client.addExceptions([{ type: 'host', source: 'www.anonyome.com' }])
 
     // Now it should be not be blocked:
-    await expect(
+    expect(
       client.checkUrl(
         'https://example.com/!advert_',
         'https://www.anonyome.com',
       ),
-    ).resolves.toEqual('allowed')
+    ).toEqual('allowed')
+  })
+
+  it('should list apple rulesets', async () => {
+    const client = new SudoAdTrackerBlockerClient({
+      sudoUserClient: userClient,
+      logger,
+      format: RulesetFormat.Apple,
+    })
+
+    await client.update()
+    const rulesets = await client.listRulesets()
+    const rulesetsWithLengths = rulesets.map((rs) => ({
+      type: rs.type,
+      updatedAt: rs.updatedAt,
+      length: rs.content!.length,
+    }))
+
+    expect(rulesetsWithLengths).toEqual([
+      {
+        type: 'ad-blocking',
+        updatedAt: expect.any(Date),
+        length: expect.any(Number),
+      },
+      {
+        type: 'privacy',
+        updatedAt: expect.any(Date),
+        length: expect.any(Number),
+      },
+      {
+        type: 'social',
+        updatedAt: expect.any(Date),
+        length: expect.any(Number),
+      },
+    ])
+  })
+
+  it('should not allow checkUrl for Apple rulesets', async () => {
+    const client = new SudoAdTrackerBlockerClient({
+      sudoUserClient: userClient,
+      logger,
+      format: RulesetFormat.Apple,
+    })
+
+    expect(() => client.checkUrl('https://whatever.com')).toThrow(
+      "The filter engine is not available. To instantiate the filter engine make sure the ruleset provider's format is AdBlockPlus and then call `client.update`.",
+    )
   })
 })

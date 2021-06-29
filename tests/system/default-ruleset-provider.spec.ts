@@ -1,6 +1,7 @@
 import { SudoUserClient } from '@sudoplatform/sudo-user'
 
 import { RulesetContent } from '../../lib/ruleset-provider'
+import { RulesetFormat } from '../../lib/ruleset-provider'
 import { DefaultRulesetProvider } from '../../lib/ruleset-providers/default-ruleset-provider'
 import { registerUser, sdkConfig } from './test-registration'
 
@@ -76,5 +77,57 @@ describe('DefaultRulesetProvider', () => {
     )
 
     expect(result2 as string).toBe('not-modified')
+  })
+
+  it('should list Apple rulesets', async () => {
+    const ruleSetProvider = new DefaultRulesetProvider({
+      userClient,
+      poolId: sdkConfig.identityService.poolId,
+      identityPoolId: sdkConfig.identityService.identityPoolId,
+      bucket: sdkConfig.identityService.staticDataBucket,
+      format: RulesetFormat.Apple,
+    })
+
+    const result = await ruleSetProvider.listRulesets()
+
+    const expectedPrefix = '/ad-tracker-blocker/filter-lists/apple'
+    expect(result).toEqual([
+      {
+        type: 'ad-blocking',
+        location: `${expectedPrefix}/AD/easylist.json`,
+        updatedAt: expect.any(Date),
+      },
+      {
+        type: 'privacy',
+        location: `${expectedPrefix}/PRIVACY/easyprivacy.json`,
+        updatedAt: expect.any(Date),
+      },
+      {
+        type: 'social',
+        location: `${expectedPrefix}/SOCIAL/fanboy-social.json`,
+        updatedAt: expect.any(Date),
+      },
+    ])
+  })
+
+  it('should download an Apple rulesets', async () => {
+    const eTagRegex = /"[0-9a-f]*"$/
+
+    const ruleSetProvider = new DefaultRulesetProvider({
+      userClient,
+      poolId: sdkConfig.identityService.poolId,
+      identityPoolId: sdkConfig.identityService.identityPoolId,
+      bucket: sdkConfig.identityService.staticDataBucket,
+      format: RulesetFormat.Apple,
+    })
+
+    const result = await ruleSetProvider.downloadRuleset(
+      '/ad-tracker-blocker/filter-lists/apple/AD/easylist.json',
+    )
+
+    if (result === 'not-modified') fail()
+    const json = JSON.parse(result.data)
+    expect(json.length).toBeGreaterThan(0)
+    expect(result.cacheKey).toEqual(expect.stringMatching(eTagRegex))
   })
 })

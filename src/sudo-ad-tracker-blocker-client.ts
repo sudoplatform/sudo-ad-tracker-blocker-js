@@ -8,13 +8,17 @@ import { isEqual, pullAllWith, uniqWith } from 'lodash'
 
 import { FilterEngine } from '../wasm/filter_engine'
 import { Config, IotsConfig } from './config'
-import { FilterException } from './filter-exceptions'
 import {
-  findExceptionMatch,
-  normalizeExceptionSources,
-  normalizeExceptions,
-} from './filter-exceptions'
-import { RulesetProvider } from './ruleset-provider'
+  FilterEngineNotAvailableError,
+  RulesetDataNotPresentError,
+} from './errors'
+import { FilterException } from './filter-exceptions'
+import { findExceptionMatch, normalizeExceptions } from './filter-exceptions'
+import {
+  RulesetFormat,
+  RulesetMetaData,
+  RulesetProvider,
+} from './ruleset-provider'
 import { DefaultRulesetProvider } from './ruleset-providers/default-ruleset-provider'
 import { RulesetType } from './ruleset-type'
 import { StorageProvider } from './storage-provider'
@@ -28,13 +32,23 @@ const defaultActiveRulesets: RulesetType[] = [
 
 const exceptionsStorageKey = 'exceptions'
 const activeRulesetsKey = 'activeRulesets'
-const validCheckUrlSchemes = ['https:', 'http:', 'ws:']
+const rulesetsMetaDataKey = 'rulesets'
+
+/**
+ * Resource URL schemes that can be blocked
+ */
+export const validCheckUrlSchemes = ['https:', 'http:', 'ws:', 'wss:']
 
 /**
  * A ruleset that can be activated for ad/tracker
  * blocking in the filter engine.
  */
-export type Ruleset = { type: RulesetType; updatedAt: Date }
+export interface Ruleset {
+  type: RulesetType
+  updatedAt: Date
+  /** Not available for ABP lists. */
+  content?: string
+}
 
 /**
  * Status of filtering engine {@link SudoAdTrackerBlockerClient}.
@@ -42,7 +56,7 @@ export type Ruleset = { type: RulesetType; updatedAt: Date }
  */
 export enum Status {
   /** Client is (re)initializing and is not ready to process calls to `checkUrl()`. */
-  Preparing = 'preparing',
+  NeedsUpdate = 'needs-update',
 
   /** Client is initialized and ready to process calls to `checkUrl()`. */
   Ready = 'ready',
@@ -65,7 +79,7 @@ export enum CheckUrlResult {
 /**
  * An item that is cached in a StorageProvider.
  */
-interface CacheItem {
+interface CachedRuleset {
   cacheKey: string
   data: string
 }
@@ -109,6 +123,11 @@ export interface SudoAdTrackerBlockerClientProps {
   rulesetProvider?: RulesetProvider
 
   /**
+   * Type of lists to use
+   */
+  format?: RulesetFormat
+
+  /**
    * Callback invoked whenever the filtering
    * status ({@link SudoAdTrackerBlockerClient.status}) changes.
    */
@@ -122,11 +141,11 @@ export interface SudoAdTrackerBlockerClientProps {
  * To query the filtering engine, you can call (@link SudoAdTrackerBlockerClient.checkUrl}.
  */
 export class SudoAdTrackerBlockerClient {
-  private _status: Status = Status.Preparing
+  private _status: Status = Status.NeedsUpdate
   private config: Config
   private storageProvider: StorageProvider
   private rulesetProvider: RulesetProvider
-  private engine!: Promise<FilterEngine>
+  private engine: FilterEngine | undefined
   private exceptions: FilterException[] = []
   private logger: Logger
 
@@ -139,6 +158,12 @@ export class SudoAdTrackerBlockerClient {
         IotsConfig,
       )
 
+    if (props.rulesetProvider && props.format) {
+      throw new Error(
+        'You cannot specific both `rulesetProvider` and `format` in constuctor props.',
+      )
+    }
+
     this.storageProvider = props?.storageProvider ?? new MemoryStorageProvider()
 
     this.rulesetProvider =
@@ -148,9 +173,45 @@ export class SudoAdTrackerBlockerClient {
         poolId: this.config.identityService.poolId,
         identityPoolId: this.config.identityService.identityPoolId,
         bucket: this.config.identityService.staticDataBucket,
+        format: props.format ?? RulesetFormat.AdBlockPlus,
       })
+  }
 
-    this.prepareFilterEngine()
+  /**
+   * Update rulesets based on any server-side changes.
+   */
+  public async update(): Promise<void> {
+    try {
+      // Update cached rulesets metadata.
+      //  -- this is always going to do a network request
+      const rulesetsMetaData = await this.rulesetProvider.listRulesets()
+      await this.setCachedRulesetsMetaData(rulesetsMetaData)
+
+      // Get rulesets data
+      //  -- this.downloadRulesData handles caching of data
+      const rulesetsData = await Promise.all(
+        rulesetsMetaData.map(async (rulesetMetaData) => ({
+          ...rulesetMetaData,
+          data: await this.downloadRulesetData(rulesetMetaData.location),
+        })),
+      )
+
+      // Only update filter engine when using AdBlockPlus rules
+      if (this.rulesetProvider.format === RulesetFormat.AdBlockPlus) {
+        await this.getExceptions() // Ensures exceptions are updated on class state
+        const activeRulesets = await this.getActiveRulesets()
+        const activeRulesetsData = rulesetsData
+          .filter((rulesetData) => activeRulesets.includes(rulesetData.type))
+          .map((rulesetData) => rulesetData.data)
+        this.engine = new FilterEngine(activeRulesetsData.join('\n'))
+      }
+
+      this.logger.info('Filter engine is ready.')
+      this.updateStatus(Status.Ready)
+    } catch (error) {
+      this.logger.error('Error updating rulesets', error)
+      this.updateStatus(Status.Error)
+    }
   }
 
   /**
@@ -162,7 +223,7 @@ export class SudoAdTrackerBlockerClient {
       this.storageProvider.clearItem(activeRulesetsKey),
     ])
 
-    this.prepareFilterEngine()
+    this.updateStatus(Status.NeedsUpdate)
   }
 
   /**
@@ -176,12 +237,45 @@ export class SudoAdTrackerBlockerClient {
    * Gets all available rulesets with associated metadata.
    */
   public async listRulesets(): Promise<Ruleset[]> {
-    const rulesets = await this.rulesetProvider.listRulesets()
+    if (this.status === Status.NeedsUpdate) {
+      throw new RulesetDataNotPresentError()
+    }
 
-    return rulesets.map((ruleset) => ({
-      type: ruleset.type,
-      updatedAt: ruleset.updatedAt,
-    }))
+    // Gets the rulesets meta data from cache
+    const rulesetsMetaData = await this.getCachedRulesetsMetaData()
+    if (!rulesetsMetaData) {
+      this.updateStatus(Status.NeedsUpdate)
+      throw new RulesetDataNotPresentError()
+    }
+
+    // Determine if we need to return ruleset data in the resonse
+    const includeContent =
+      this.rulesetProvider.format !== RulesetFormat.AdBlockPlus
+
+    // Map rulesets metadata to rulesets
+    return Promise.all(
+      rulesetsMetaData.map(async (rulesetMetaData) => {
+        // Get base ruleset info
+        const ruleset: Ruleset = {
+          type: rulesetMetaData.type,
+          updatedAt: rulesetMetaData.updatedAt,
+        }
+
+        // Include ruleset content, if needed
+        if (includeContent) {
+          const cachedRuleset = await this.getCachedRuleset(
+            rulesetMetaData.location,
+          )
+          if (!cachedRuleset) {
+            this.updateStatus(Status.NeedsUpdate)
+            throw new RulesetDataNotPresentError()
+          }
+          ruleset.content = cachedRuleset.data
+        }
+
+        return ruleset
+      }),
+    )
   }
 
   /**
@@ -207,7 +301,7 @@ export class SudoAdTrackerBlockerClient {
       JSON.stringify(rulesetTypes),
     )
 
-    this.prepareFilterEngine()
+    this.updateStatus(Status.NeedsUpdate)
   }
 
   /**
@@ -216,12 +310,21 @@ export class SudoAdTrackerBlockerClient {
    * @param currentUrl Current URL.
    * @param resourceType
    */
-  public async checkUrl(
+  public checkUrl(
     url: string,
     sourceUrl = '',
     resourceType = '',
-  ): Promise<CheckUrlResult> {
-    const engine = await this.engine
+  ): CheckUrlResult {
+    if (
+      this.rulesetProvider.format !== RulesetFormat.AdBlockPlus ||
+      !this.engine
+    ) {
+      throw new FilterEngineNotAvailableError()
+    }
+
+    if (this.status === Status.NeedsUpdate) {
+      throw new RulesetDataNotPresentError()
+    }
 
     let parsedUrl
     try {
@@ -245,7 +348,7 @@ export class SudoAdTrackerBlockerClient {
       }
     }
 
-    const isBlocked = engine.checkNetworkUrlsMatched(
+    const isBlocked = this.engine.checkNetworkUrlsMatched(
       url,
       sourceUrl,
       resourceType,
@@ -255,27 +358,18 @@ export class SudoAdTrackerBlockerClient {
   }
 
   /**
-   * Re-fetches all rulesets to ensure they are up-to-date.
-   */
-  public async updateRulesets(): Promise<void> {
-    const rulesets = await this.rulesetProvider.listRulesets()
-
-    await Promise.all(
-      rulesets.map(async (rs) =>
-        this.rulesetProvider.downloadRuleset(rs.location),
-      ),
-    )
-  }
-
-  /**
    * Retrieves current filtering exceptions that are influencing
    * the behavior of {@link SudoAdTrackerBlockerClient.checkUrl}.
    */
   public async getExceptions(): Promise<FilterException[]> {
-    const sourcesJson = await this.storageProvider.getItem(exceptionsStorageKey)
-    const sources = sourcesJson ? JSON.parse(sourcesJson) : []
+    const filterExceptionsJson = await this.storageProvider.getItem(
+      exceptionsStorageKey,
+    )
+    const filterExceptions = filterExceptionsJson
+      ? JSON.parse(filterExceptionsJson)
+      : []
 
-    this.exceptions = normalizeExceptionSources(sources)
+    this.exceptions = filterExceptions
 
     return this.exceptions
   }
@@ -296,7 +390,7 @@ export class SudoAdTrackerBlockerClient {
     // Store just the exception sources
     await this.storageProvider.setItem(
       exceptionsStorageKey,
-      JSON.stringify(combinedException.map(({ source }) => source)),
+      JSON.stringify(combinedException),
     )
 
     this.exceptions = combinedException
@@ -319,7 +413,7 @@ export class SudoAdTrackerBlockerClient {
     // Store just the exception sources
     await this.storageProvider.setItem(
       exceptionsStorageKey,
-      JSON.stringify(updatedExceptions.map(({ source }) => source)),
+      JSON.stringify(updatedExceptions),
     )
 
     this.exceptions = updatedExceptions
@@ -340,71 +434,61 @@ export class SudoAdTrackerBlockerClient {
     }
   }
 
-  private prepareFilterEngine(): void {
-    this.logger.info('Preparing filter engine.')
-    this.updateStatus(Status.Preparing)
-
-    const newEngine = new Promise<FilterEngine>(async (resolve, reject) => {
-      try {
-        await this.getExceptions()
-
-        const rulesetsMeta = await this.rulesetProvider.listRulesets()
-        const activeRulesets = await this.getActiveRulesets()
-        const activeRulesetsData = await Promise.all(
-          rulesetsMeta
-            .filter((ruleset) => activeRulesets.includes(ruleset.type))
-            .map((rulesetMeta) =>
-              this.downloadRulesetData(rulesetMeta.location),
-            ),
-        )
-        const filterEngine = new FilterEngine(activeRulesetsData.join('\n'))
-
-        if (this.engine === newEngine) {
-          this.logger.info('Filter engine is ready.')
-          this.updateStatus(Status.Ready)
-        }
-
-        resolve(filterEngine)
-      } catch (error) {
-        if (this.engine === newEngine) {
-          this.logger.error('Error initializing filter engine.', error)
-          this.updateStatus(Status.Error)
-        }
-        reject(error)
-      }
-    })
-
-    this.engine = newEngine
-  }
-
   private async downloadRulesetData(id: string): Promise<string> {
     this.logger.info(`Syncing ruleset: ${id}`)
-    const cacheItem = await this.getCacheItem(id)
+    const cachedRuleset = await this.getCachedRuleset(id)
     const ruleSet = await this.rulesetProvider.downloadRuleset(
       id,
-      cacheItem?.cacheKey,
+      cachedRuleset?.cacheKey,
     )
 
     if (ruleSet === 'not-modified') {
       this.logger.info(`Ruleset ${id} is available in cache.`)
-      if (!cacheItem) {
+      if (!cachedRuleset) {
         throw new Error('Unexpected: no cache item')
       }
 
-      return cacheItem.data
+      return cachedRuleset.data
     } else {
       this.logger.info(`Ruleset ${id} was downloaded.`)
     }
 
     const cacheKey = ruleSet.cacheKey
     if (cacheKey) {
-      this.setCacheItem(id, cacheKey, ruleSet.data)
+      this.setCachedRuleset(id, cacheKey, ruleSet.data)
     }
 
     return ruleSet.data
   }
 
-  private async setCacheItem(
+  private async setCachedRulesetsMetaData(
+    rulesetsMetaData: RulesetMetaData[],
+  ): Promise<void> {
+    this.storageProvider.setItem(
+      rulesetsMetaDataKey,
+      JSON.stringify(rulesetsMetaData),
+    )
+  }
+
+  private async getCachedRulesetsMetaData(): Promise<
+    RulesetMetaData[] | undefined
+  > {
+    const rulesetsJson = await this.storageProvider.getItem(rulesetsMetaDataKey)
+    if (!rulesetsJson) {
+      return undefined
+    }
+
+    return JSON.parse(rulesetsJson, (key, value) => {
+      switch (key) {
+        case 'updatedAt':
+          return new Date(value)
+        default:
+          return value
+      }
+    })
+  }
+
+  private async setCachedRuleset(
     id: string,
     cacheKey: string,
     data: string,
@@ -418,7 +502,9 @@ export class SudoAdTrackerBlockerClient {
     )
   }
 
-  private async getCacheItem(id: string): Promise<CacheItem | undefined> {
+  private async getCachedRuleset(
+    id: string,
+  ): Promise<CachedRuleset | undefined> {
     const item = await this.storageProvider.getItem(id)
 
     return item && JSON.parse(item)

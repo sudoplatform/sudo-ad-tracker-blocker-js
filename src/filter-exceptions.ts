@@ -40,12 +40,6 @@ export function normalizeExceptions(
   })
 }
 
-export function normalizeExceptionSources(
-  exceptionSources: string[],
-): FilterException[] {
-  return exceptionSources.map(normalizeException)
-}
-
 export function findExceptionMatch(
   exceptions: FilterException[],
   url: string,
@@ -65,17 +59,6 @@ export function findExceptionMatch(
   return matchedException ? 'match' : 'no-match'
 }
 
-function normalizeException(source: string): FilterException {
-  const urlParts = getUrlParts(source)
-  const normalizedSource = `${urlParts.host}${urlParts.pathname}`
-  const isPageException = normalizedSource.includes('/')
-
-  return {
-    type: isPageException ? 'page' : 'host',
-    source: normalizedSource,
-  }
-}
-
 function normalizeDomainException(source: string): FilterException {
   const urlParts = getUrlParts(source)
 
@@ -90,13 +73,14 @@ function normalizePageException(source: string): FilterException {
 
   return {
     type: 'page',
-    source: `${urlParts.host}${urlParts.pathname || '/'}`,
+    source: `${urlParts.host}${urlParts.pathname}`,
   }
 }
 
 function getUrlParts(input: string): urlparse {
   input = input.trim().toLowerCase()
   const hasScheme = scheme.test(input)
+
   const urlParts = urlparse(hasScheme ? input : `scheme://${input}`)
 
   if (!urlParts.host) {

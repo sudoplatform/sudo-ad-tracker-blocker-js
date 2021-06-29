@@ -1,3 +1,4 @@
+import { RulesetFormat } from '../ruleset-provider'
 import { DefaultRulesetProvider } from './default-ruleset-provider'
 
 jest.mock('aws-sdk/clients/s3', () => {
@@ -20,6 +21,24 @@ jest.mock('aws-sdk/clients/s3', () => {
         Body: Buffer.from('LIST3', 'utf8'),
         ETag: 'etag3',
         LastModified: new Date('2020-01-03T00:00:00Z'),
+      },
+      {
+        Key: '/ad-tracker-blocker/filter-lists/apple/AD/list1.json',
+        Body: Buffer.from('LIST1-APPLE', 'utf8'),
+        ETag: 'etag1',
+        LastModified: new Date('2020-02-01T00:00:00Z'),
+      },
+      {
+        Key: '/ad-tracker-blocker/filter-lists/apple/PRIVACY/list2.json',
+        Body: Buffer.from('LIST2-APPLE', 'utf8'),
+        ETag: 'etag2',
+        LastModified: new Date('2020-02-02T00:00:00Z'),
+      },
+      {
+        Key: '/ad-tracker-blocker/filter-lists/apple/SOCIAL/list3.json',
+        Body: Buffer.from('LIST3-APPLE', 'utf8'),
+        ETag: 'etag3',
+        LastModified: new Date('2020-02-03T00:00:00Z'),
       },
     ],
   }
@@ -59,6 +78,7 @@ jest.mock('aws-sdk/lib/core', () => ({
   CognitoIdentityCredentials: jest.fn((props) => ({
     props,
     getPromise: jest.fn(),
+    clearCachedId: jest.fn(),
   })),
 }))
 
@@ -68,7 +88,7 @@ const mockUserClient = {
 
 describe('DefaultRuleSetProvider', () => {
   describe('listRuleSets()', () => {
-    it('should return metadata for all rulesets', async () => {
+    it('should return metadata for all rulesets - AdblockPlus', async () => {
       const provider = new DefaultRulesetProvider({
         userClient: mockUserClient as any,
         bucket: 'BUCKET',
@@ -93,6 +113,36 @@ describe('DefaultRuleSetProvider', () => {
           type: 'social',
           location: `${expectedPrefix}/SOCIAL/list3.txt`,
           updatedAt: new Date('2020-01-03T00:00:00Z'),
+        },
+      ])
+    })
+
+    it('should return metadata for all rulesets - Apple', async () => {
+      const provider = new DefaultRulesetProvider({
+        userClient: mockUserClient as any,
+        bucket: 'BUCKET',
+        poolId: 'POOL',
+        identityPoolId: 'ID_POOL',
+        format: RulesetFormat.Apple,
+      })
+
+      const result = await provider.listRulesets()
+      const expectedPrefix = '/ad-tracker-blocker/filter-lists/apple'
+      expect(result).toEqual([
+        {
+          location: `${expectedPrefix}/AD/list1.json`,
+          type: 'ad-blocking',
+          updatedAt: new Date('2020-02-01T00:00:00Z'),
+        },
+        {
+          type: 'privacy',
+          location: `${expectedPrefix}/PRIVACY/list2.json`,
+          updatedAt: new Date('2020-02-02T00:00:00Z'),
+        },
+        {
+          type: 'social',
+          location: `${expectedPrefix}/SOCIAL/list3.json`,
+          updatedAt: new Date('2020-02-03T00:00:00Z'),
         },
       ])
     })

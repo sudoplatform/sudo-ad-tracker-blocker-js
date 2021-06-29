@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>CheckUrlResult | @sudoplatform/sudo-ad-tracker-blocker</title>
+	<title>RulesetFormat | @sudoplatform/sudo-ad-tracker-blocker</title>
 	<meta name="description" content="Documentation for @sudoplatform/sudo-ad-tracker-blocker">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -55,10 +55,10 @@
 					<a href="../modules.html">@sudoplatform/sudo-ad-tracker-blocker</a>
 				</li>
 				<li>
-					<a href="checkurlresult.html">CheckUrlResult</a>
+					<a href="rulesetformat.html">RulesetFormat</a>
 				</li>
 			</ul>
-			<h1>Enumeration CheckUrlResult</h1>
+			<h1>Enumeration RulesetFormat</h1>
 		</div>
 	</div>
 </header>
@@ -68,7 +68,7 @@
 			<section class="tsd-panel tsd-comment">
 				<div class="tsd-comment tsd-typography">
 					<div class="lead">
-						<p>The result given when calling <a href="../classes/sudoadtrackerblockerclient.html#checkurl">SudoAdTrackerBlockerClient.checkUrl</a>.</p>
+						<p>Ruleset format</p>
 					</div>
 				</div>
 			</section>
@@ -79,8 +79,8 @@
 						<section class="tsd-index-section ">
 							<h3>Enumeration members</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="checkurlresult.html#allowed" class="tsd-kind-icon">Allowed</a></li>
-								<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="checkurlresult.html#blocked" class="tsd-kind-icon">Blocked</a></li>
+								<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="rulesetformat.html#adblockplus" class="tsd-kind-icon">Ad<wbr>Block<wbr>Plus</a></li>
+								<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="rulesetformat.html#apple" class="tsd-kind-icon">Apple</a></li>
 							</ul>
 						</section>
 					</div>
@@ -89,34 +89,24 @@
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Enumeration members</h2>
 				<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
-					<a name="allowed" class="tsd-anchor"></a>
-					<h3>Allowed</h3>
-					<div class="tsd-signature tsd-kind-icon">Allowed<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> = &quot;allowed&quot;</span></div>
+					<a name="adblockplus" class="tsd-anchor"></a>
+					<h3>Ad<wbr>Block<wbr>Plus</h3>
+					<div class="tsd-signature tsd-kind-icon">Ad<wbr>Block<wbr>Plus<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> = &quot;adblock-plus&quot;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in sudo-ad-tracker-blocker-client.ts:73</li>
+							<li>Defined in ruleset-provider.ts:24</li>
 						</ul>
 					</aside>
-					<div class="tsd-comment tsd-typography">
-						<div class="lead">
-							<p>The <code>url</code> is allowed to be fetched based on active rulesets &amp; exceptions.</p>
-						</div>
-					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
-					<a name="blocked" class="tsd-anchor"></a>
-					<h3>Blocked</h3>
-					<div class="tsd-signature tsd-kind-icon">Blocked<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> = &quot;blocked&quot;</span></div>
+					<a name="apple" class="tsd-anchor"></a>
+					<h3>Apple</h3>
+					<div class="tsd-signature tsd-kind-icon">Apple<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> = &quot;apple&quot;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in sudo-ad-tracker-blocker-client.ts:76</li>
+							<li>Defined in ruleset-provider.ts:25</li>
 						</ul>
 					</aside>
-					<div class="tsd-comment tsd-typography">
-						<div class="lead">
-							<p>The <code>url</code> is not allowed to be fetched based on active rulesets &amp; exceptions.</p>
-						</div>
-					</div>
 				</section>
 			</section>
 		</div>
@@ -130,24 +120,24 @@
 			</nav>
 			<nav class="tsd-navigation secondary menu-sticky">
 				<ul class="before-current">
+					<li class=" tsd-kind-enum">
+						<a href="checkurlresult.html" class="tsd-kind-icon">Check<wbr>Url<wbr>Result</a>
+					</li>
 				</ul>
 				<ul class="current">
 					<li class="current tsd-kind-enum">
-						<a href="checkurlresult.html" class="tsd-kind-icon">Check<wbr>Url<wbr>Result</a>
+						<a href="rulesetformat.html" class="tsd-kind-icon">Ruleset<wbr>Format</a>
 						<ul>
 							<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
-								<a href="checkurlresult.html#allowed" class="tsd-kind-icon">Allowed</a>
+								<a href="rulesetformat.html#adblockplus" class="tsd-kind-icon">Ad<wbr>Block<wbr>Plus</a>
 							</li>
 							<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
-								<a href="checkurlresult.html#blocked" class="tsd-kind-icon">Blocked</a>
+								<a href="rulesetformat.html#apple" class="tsd-kind-icon">Apple</a>
 							</li>
 						</ul>
 					</li>
 				</ul>
 				<ul class="after-current">
-					<li class=" tsd-kind-enum">
-						<a href="rulesetformat.html" class="tsd-kind-icon">Ruleset<wbr>Format</a>
-					</li>
 					<li class=" tsd-kind-enum">
 						<a href="rulesettype.html" class="tsd-kind-icon">Ruleset<wbr>Type</a>
 					</li>

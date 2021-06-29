@@ -2,11 +2,16 @@ import fs from 'fs'
 import path from 'path'
 
 import { nullLogger } from '../tests/unit/null-logger'
-import { normalizeExceptionSources } from './filter-exceptions'
+import {
+  FilterEngineNotAvailableError,
+  RulesetDataNotPresentError,
+} from './errors'
+import { RulesetFormat } from './ruleset-provider'
 import { MockRuleSetProvider } from './ruleset-providers/mock-ruleset-provider'
 import { RulesetType } from './ruleset-type'
 import { MemoryStorageProvider } from './storage-providers/memory-storage-provider'
 import {
+  Status,
   SudoAdTrackerBlockerClient,
   SudoAdTrackerBlockerClientProps,
 } from './sudo-ad-tracker-blocker-client'
@@ -42,31 +47,46 @@ describe('SudoAdTrackerBlockerClient', () => {
     it('should start with initializing status', async () => {
       const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
-      expect(atbClient.status).toBe('preparing')
+      expect(atbClient.status).toBe(Status.NeedsUpdate)
+    })
+
+    it('should throw if client needs update', async () => {
+      const atbClient = new SudoAdTrackerBlockerClient(testProps)
+
+      expect(() => atbClient.checkUrl('http://something.com')).toThrow()
     })
 
     it('should go to ready after initializing status', async () => {
       const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
-      // This awaits this.engine
-      await atbClient.checkUrl('http://something.com')
+      await atbClient.update()
+      atbClient.checkUrl('http://something.com')
 
-      expect(atbClient.status).toBe('ready')
+      expect(atbClient.status).toBe(Status.Ready)
     })
 
     it('should signal ready state via callback', async () => {
-      let resolveStatus: (value?: unknown) => void
-      const waitForStatus = new Promise((resolve) => {
-        resolveStatus = resolve
-      })
+      const onStatusChangedSpy = jest.fn()
       const atbClient = new SudoAdTrackerBlockerClient({
         ...testProps,
-        onStatusChanged: () => resolveStatus(),
+        onStatusChanged: onStatusChangedSpy,
       })
 
-      expect(atbClient.status).toBe('preparing')
-      await waitForStatus
-      expect(atbClient.status).toBe('ready')
+      expect(atbClient.status).toBe(Status.NeedsUpdate)
+      await atbClient.update()
+      expect(onStatusChangedSpy).toBeCalled()
+      expect(atbClient.status).toBe(Status.Ready)
+    })
+
+    it('should prevent construction with both format and ruleset provider props set', async () => {
+      expect(() => {
+        new SudoAdTrackerBlockerClient({
+          ...testProps,
+          format: RulesetFormat.Apple,
+        })
+      }).toThrow(
+        'You cannot specific both `rulesetProvider` and `format` in constuctor props.',
+      )
     })
   })
 
@@ -85,7 +105,8 @@ describe('SudoAdTrackerBlockerClient', () => {
       async ({ url, expectedResult }) => {
         const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
-        const result = await atbClient.checkUrl(url)
+        await atbClient.update()
+        const result = atbClient.checkUrl(url)
         expect(result).toBe(expectedResult)
       },
     )
@@ -93,7 +114,8 @@ describe('SudoAdTrackerBlockerClient', () => {
     it('should throw if `url` arg is not a valid URL', async () => {
       const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
-      await expect(atbClient.checkUrl('buybuybuy.com')).rejects.toThrow(
+      await atbClient.update()
+      expect(() => atbClient.checkUrl('buybuybuy.com')).toThrow(
         '`url` is not a valid URL',
       )
     })
@@ -101,15 +123,89 @@ describe('SudoAdTrackerBlockerClient', () => {
     it('should throw if `url` arg is not a valid scheme', async () => {
       const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
-      await expect(atbClient.checkUrl('ftp://buybuybuy.com')).rejects.toThrow(
+      await atbClient.update()
+      expect(() => atbClient.checkUrl('ftp://buybuybuy.com')).toThrow(
         '`url` must be of a valid scheme',
+      )
+    })
+
+    it('should disable filter engine for non adblock-plus lists', async () => {
+      const atbClient = new SudoAdTrackerBlockerClient({
+        ...testProps,
+        rulesetProvider: new MockRuleSetProvider({
+          format: RulesetFormat.Apple,
+        }),
+      })
+
+      expect(() => atbClient.checkUrl('https://whatever.com')).toThrow(
+        FilterEngineNotAvailableError,
+      )
+    })
+
+    it('should throw if status is needs update', async () => {
+      const atbClient = new SudoAdTrackerBlockerClient(testProps)
+
+      expect(() => atbClient.checkUrl('https://whatever.com')).toThrow(
+        FilterEngineNotAvailableError,
       )
     })
   })
 
-  it('should get rulesets', async () => {
+  it('should throw if needs update for listRulesets', async () => {
     const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
+    await expect(atbClient.listRulesets()).rejects.toThrow(
+      RulesetDataNotPresentError,
+    )
+  })
+
+  it('should throw if no cached ruleset meta data for listRulesets', async () => {
+    const atbClient = new SudoAdTrackerBlockerClient({
+      ...testProps,
+      storageProvider: {
+        getItem: jest.fn().mockResolvedValue(undefined),
+      } as any,
+    })
+
+    await atbClient.update()
+    await expect(atbClient.listRulesets()).rejects.toThrow(
+      RulesetDataNotPresentError,
+    )
+  })
+
+  it('should throw if no cached rulesets for listRulesets', async () => {
+    const atbClient = new SudoAdTrackerBlockerClient({
+      ...testProps,
+      rulesetProvider: new MockRuleSetProvider({
+        format: RulesetFormat.Apple,
+      }),
+      storageProvider: {
+        getItem: jest
+          .fn()
+          // stored ruleset meta data
+          .mockResolvedValueOnce(
+            JSON.stringify([
+              {
+                updatedAt: '2020-01-01T00:00:00.000Z',
+                type: 'droid',
+              },
+            ]),
+          )
+          // stored ruleset content
+          .mockResolvedValueOnce(undefined),
+      } as any,
+    })
+
+    await atbClient.update()
+    await expect(atbClient.listRulesets()).rejects.toThrow(
+      RulesetDataNotPresentError,
+    )
+  })
+
+  it('should get AdBlockPlus rulesets', async () => {
+    const atbClient = new SudoAdTrackerBlockerClient(testProps)
+
+    await atbClient.update()
     const result = await atbClient.listRulesets()
 
     expect(result).toEqual([
@@ -128,6 +224,35 @@ describe('SudoAdTrackerBlockerClient', () => {
     ])
   })
 
+  it('should get Apple rulesets', async () => {
+    const atbClient = new SudoAdTrackerBlockerClient({
+      ...testProps,
+      rulesetProvider: new MockRuleSetProvider({
+        format: RulesetFormat.Apple,
+      }),
+    })
+
+    await atbClient.update()
+    const rulesets = await atbClient.listRulesets()
+    expect(rulesets).toEqual([
+      {
+        type: 'ad-blocking',
+        updatedAt: new Date('2020-02-01T00:00:00.000Z'),
+        content: 'apple1',
+      },
+      {
+        type: 'privacy',
+        updatedAt: new Date('2020-02-02T00:00:00.000Z'),
+        content: 'apple2',
+      },
+      {
+        type: 'social',
+        updatedAt: new Date('2020-02-03T00:00:00.000Z'),
+        content: 'apple3',
+      },
+    ])
+  })
+
   it('should update rulesets', async () => {
     fetchSpy.mockResolvedValue({
       text: () => 'Data and stuff',
@@ -138,7 +263,7 @@ describe('SudoAdTrackerBlockerClient', () => {
     })
     const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
-    await atbClient.updateRulesets()
+    await atbClient.update()
 
     // TODO: CHeck that storage has cached values
     // Get rid of fetch spy
@@ -157,19 +282,18 @@ describe('SudoAdTrackerBlockerClient', () => {
         const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
         await atbClient.addExceptions([{ type, source }])
+        await atbClient.update()
 
-        expect(await atbClient.checkUrl(testUrl, sourceUrl)).toBe(
-          expectedResult,
-        )
+        expect(atbClient.checkUrl(testUrl, sourceUrl)).toBe(expectedResult)
       },
     )
 
     it.each`
       type      | source             | testUrl                    | sourceUrl                      | expectedResult
-      ${'page'} | ${'anonyome.com/'} | ${'https://buybuybuy.com'} | ${'https://anonyome.com'}      | ${'blocked'}
+      ${'page'} | ${'anonyome.com'}  | ${'https://buybuybuy.com'} | ${'https://anonyome.com/'}     | ${'allowed'}
       ${'page'} | ${'anonyome.com/'} | ${'https://buybuybuy.com'} | ${'https://anonyome.com/'}     | ${'allowed'}
       ${'page'} | ${'anonyome.com/'} | ${'https://buybuybuy.com'} | ${'https://anonyome.com/page'} | ${'blocked'}
-      ${'page'} | ${'10.0.1.1/'}     | ${'https://buybuybuy.com'} | ${'https://10.0.1.1'}          | ${'blocked'}
+      ${'page'} | ${'10.0.1.1'}      | ${'https://buybuybuy.com'} | ${'https://10.0.1.1/'}         | ${'allowed'}
       ${'page'} | ${'10.0.1.1/'}     | ${'https://buybuybuy.com'} | ${'https://10.0.1.1/'}         | ${'allowed'}
       ${'page'} | ${'10.0.1.1/'}     | ${'https://buybuybuy.com'} | ${'https://10.0.1.1/page'}     | ${'blocked'}
     `(
@@ -178,10 +302,9 @@ describe('SudoAdTrackerBlockerClient', () => {
         const atbClient = new SudoAdTrackerBlockerClient(testProps)
 
         await atbClient.addExceptions([{ type, source }])
+        await atbClient.update()
 
-        expect(await atbClient.checkUrl(testUrl, sourceUrl)).toBe(
-          expectedResult,
-        )
+        expect(atbClient.checkUrl(testUrl, sourceUrl)).toBe(expectedResult)
       },
     )
 
@@ -189,7 +312,7 @@ describe('SudoAdTrackerBlockerClient', () => {
       const storageProvider = new MemoryStorageProvider()
       await storageProvider.setItem(
         'exceptions',
-        JSON.stringify(['federation.com']),
+        JSON.stringify([{ type: 'host', source: 'federation.com' }]),
       )
 
       const atbClient = new SudoAdTrackerBlockerClient({
@@ -202,20 +325,65 @@ describe('SudoAdTrackerBlockerClient', () => {
           type: 'host',
           source: 'anonyome.com',
         },
+        {
+          type: 'page',
+          source: 'anonyome.com',
+        },
       ])
 
       const exceptions = await atbClient.getExceptions()
       const storedExceptions = await storageProvider
         .getItem('exceptions')
         .then((ex) => JSON.parse(ex))
-      expect(exceptions).toEqual(normalizeExceptionSources(storedExceptions))
+      expect(exceptions).toEqual(storedExceptions)
 
+      await atbClient.update()
       expect(
-        await atbClient.checkUrl(
-          'http://www.buybuybuy.com',
-          'http://anonyome.com',
-        ),
+        atbClient.checkUrl('http://www.buybuybuy.com', 'http://anonyome.com'),
       ).toBe('allowed')
+    })
+
+    it.each`
+      type      | source                         | expectedType | expectedSource
+      ${'page'} | ${'example.com'}               | ${'page'}    | ${'example.com/'}
+      ${'page'} | ${'example.com/'}              | ${'page'}    | ${'example.com/'}
+      ${'page'} | ${'example.com/page'}          | ${'page'}    | ${'example.com/page'}
+      ${'page'} | ${'example.com/page/'}         | ${'page'}    | ${'example.com/page/'}
+      ${'page'} | ${'https://example.com/page'}  | ${'page'}    | ${'example.com/page'}
+      ${'page'} | ${'https://example.com/page/'} | ${'page'}    | ${'example.com/page/'}
+    `(
+      'should noramlize urls when storing exceptions',
+      async ({ type, source, expectedType, expectedSource }) => {
+        const storageProvider = new MemoryStorageProvider()
+        const atbClient = new SudoAdTrackerBlockerClient({
+          ...testProps,
+          storageProvider,
+        })
+
+        await atbClient.addExceptions([{ type, source }])
+
+        const storedExceptions = await storageProvider
+          .getItem('exceptions')
+          .then(JSON.parse)
+        expect(await storedExceptions).toEqual([
+          { type: expectedType, source: expectedSource },
+        ])
+      },
+    )
+
+    it.each`
+      source
+      ${'https://www.@#$%^#$.com'}
+      ${'https://@#$%^#$.com'}
+      ${'@#$%^#$.com'}
+    `('should throw when bogus domain', async ({ source }) => {
+      const atbClient = new SudoAdTrackerBlockerClient(testProps)
+
+      const promise = atbClient.addExceptions([{ type: 'host', source }])
+
+      await expect(promise).rejects.toThrow(
+        `Could not determine host for exception: ${source}`,
+      )
     })
   })
 
@@ -227,24 +395,23 @@ describe('SudoAdTrackerBlockerClient', () => {
 
     it('should return the current list of exceptions', async () => {
       const storageProvider = new MemoryStorageProvider()
+      const storedExceptions = [
+        { type: 'host', source: 'exception1.com' },
+        { type: 'host', source: 'exception2.com' },
+      ]
       await storageProvider.setItem(
         'exceptions',
-        JSON.stringify(['exception1.com', 'exception2.com']),
+        JSON.stringify(storedExceptions),
       )
       const atbClient = new SudoAdTrackerBlockerClient({
         ...testProps,
         storageProvider,
       })
+      await atbClient.update()
 
-      expect(await atbClient.getExceptions()).toEqual([
-        { type: 'host', source: 'exception1.com' },
-        { type: 'host', source: 'exception2.com' },
-      ])
+      expect(await atbClient.getExceptions()).toEqual(storedExceptions)
       expect(
-        await atbClient.checkUrl(
-          'http://buybuybuy.com',
-          'http://exception1.com',
-        ),
+        atbClient.checkUrl('http://buybuybuy.com', 'http://exception1.com'),
       ).toBe('allowed')
     })
   })
@@ -252,9 +419,14 @@ describe('SudoAdTrackerBlockerClient', () => {
   describe('removeExceptions', () => {
     it('should remove a url from the exception list', async () => {
       const storageProvider = new MemoryStorageProvider()
+      const storedExceptions = [
+        { type: 'host', source: 'exception1.com' },
+        { type: 'host', source: 'exception2.com' },
+        { type: 'host', source: 'anonyome.com' },
+      ]
       await storageProvider.setItem(
         'exceptions',
-        JSON.stringify(['exception1.com', 'exception2.com', 'anonyome.com']),
+        JSON.stringify(storedExceptions),
       )
       const atbClient = new SudoAdTrackerBlockerClient({
         ...testProps,
@@ -264,24 +436,27 @@ describe('SudoAdTrackerBlockerClient', () => {
       await atbClient.removeExceptions([
         { type: 'host', source: 'anonyome.com' },
       ])
+      await atbClient.update()
 
       expect(await atbClient.getExceptions()).toEqual([
         { type: 'host', source: 'exception1.com' },
         { type: 'host', source: 'exception2.com' },
       ])
       expect(
-        await atbClient.checkUrl(
-          'http://www.buybuybuy.com',
-          'http://anonyome.com',
-        ),
+        atbClient.checkUrl('http://www.buybuybuy.com', 'http://anonyome.com'),
       ).toBe('blocked')
     })
 
     it('should do nothing if exception does not exist', async () => {
       const storageProvider = new MemoryStorageProvider()
+      const storedExceptions = [
+        { type: 'host', source: 'exception1.com' },
+        { type: 'host', source: 'exception2.com' },
+        { type: 'host', source: 'exception3.com' },
+      ]
       await storageProvider.setItem(
         'exceptions',
-        JSON.stringify(['exception1.com', 'exception2.com', 'exception3.com']),
+        JSON.stringify(storedExceptions),
       )
       const atbClient = new SudoAdTrackerBlockerClient({
         ...testProps,
@@ -347,13 +522,12 @@ describe('SudoAdTrackerBlockerClient', () => {
         storageProvider,
       })
 
-      // An action to get into ready state
-      await atbClient.checkUrl('http://stuff')
-      expect(atbClient.status).toBe('ready')
+      await atbClient.update()
+      expect(atbClient.status).toBe(Status.Ready)
 
       // Action that updates filter engine
       await atbClient.setActiveRulesets([RulesetType.AdBlocking])
-      expect(atbClient.status).toBe('preparing')
+      expect(atbClient.status).toBe(Status.NeedsUpdate)
 
       const activeLists = await storageProvider.getItem('activeRulesets')
 
