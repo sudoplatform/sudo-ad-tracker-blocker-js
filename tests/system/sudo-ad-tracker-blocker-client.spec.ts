@@ -91,8 +91,6 @@ describe('SudoAdTrackerBlockerClient', () => {
     // Disable Ad blocking ruleset
     await client.setActiveRulesets([RulesetType.Privacy, RulesetType.Social])
 
-    await client.update()
-
     // Verify getActiveRulesets reports the change correctly
     await expect(client.getActiveRulesets()).resolves.toEqual([
       RulesetType.Privacy,

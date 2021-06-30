@@ -527,7 +527,6 @@ describe('SudoAdTrackerBlockerClient', () => {
 
       // Action that updates filter engine
       await atbClient.setActiveRulesets([RulesetType.AdBlocking])
-      expect(atbClient.status).toBe(Status.NeedsUpdate)
 
       const activeLists = await storageProvider.getItem('activeRulesets')
 

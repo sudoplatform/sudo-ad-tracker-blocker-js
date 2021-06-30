@@ -293,7 +293,8 @@ export class SudoAdTrackerBlockerClient {
   }
 
   /**
-   * Sets which ruleset types are active in the filtering engine.
+   * Sets which ruleset types are active in the filtering engine and
+   * then performs the update operation.
    */
   public async setActiveRulesets(rulesetTypes: RulesetType[]): Promise<void> {
     await this.storageProvider.setItem(
@@ -301,7 +302,7 @@ export class SudoAdTrackerBlockerClient {
       JSON.stringify(rulesetTypes),
     )
 
-    this.updateStatus(Status.NeedsUpdate)
+    await this.update()
   }
 
   /**
