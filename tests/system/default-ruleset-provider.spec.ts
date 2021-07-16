@@ -1,16 +1,41 @@
+import { NotAuthorizedError } from '@sudoplatform/sudo-common'
 import { SudoUserClient } from '@sudoplatform/sudo-user'
+import { AuthenticationStore } from '@sudoplatform/sudo-user/lib/core/auth-store'
 
 import { RulesetContent } from '../../lib/ruleset-provider'
 import { RulesetFormat } from '../../lib/ruleset-provider'
 import { DefaultRulesetProvider } from '../../lib/ruleset-providers/default-ruleset-provider'
-import { registerUser, sdkConfig } from './test-registration'
+import {
+  invalidateAuthTokens,
+  registerUser,
+  sdkConfig,
+} from './test-registration'
 
 let userClient: SudoUserClient
-beforeAll(async () => {
-  userClient = await registerUser()
+let authStore: AuthenticationStore
+
+beforeEach(async () => {
+  const services = await registerUser()
+  authStore = services.authStore
+  userClient = services.userClient
 })
 
 describe('DefaultRulesetProvider', () => {
+  it('listRulesets should throw NotAuthorizedError', async () => {
+    await invalidateAuthTokens(authStore, userClient)
+
+    const ruleSetProvider = new DefaultRulesetProvider({
+      userClient,
+      poolId: sdkConfig.identityService.poolId,
+      identityPoolId: sdkConfig.identityService.identityPoolId,
+      bucket: sdkConfig.identityService.staticDataBucket,
+    })
+
+    await expect(ruleSetProvider.listRulesets()).rejects.toThrow(
+      NotAuthorizedError,
+    )
+  })
+
   it('should list rule sets', async () => {
     const ruleSetProvider = new DefaultRulesetProvider({
       userClient,
@@ -39,6 +64,21 @@ describe('DefaultRulesetProvider', () => {
         updatedAt: expect.any(Date),
       },
     ])
+  })
+
+  it('downloadRuleset should throw NotAuthorizedError', async () => {
+    await invalidateAuthTokens(authStore, userClient)
+
+    const ruleSetProvider = new DefaultRulesetProvider({
+      userClient,
+      poolId: sdkConfig.identityService.poolId,
+      identityPoolId: sdkConfig.identityService.identityPoolId,
+      bucket: sdkConfig.identityService.staticDataBucket,
+    })
+
+    await expect(
+      ruleSetProvider.downloadRuleset('not-important'),
+    ).rejects.toThrow(NotAuthorizedError)
   })
 
   it('should download rule sets', async () => {

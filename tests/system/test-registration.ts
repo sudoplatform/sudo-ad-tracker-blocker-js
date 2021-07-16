@@ -3,6 +3,7 @@ import path from 'path'
 
 import { DefaultConfigurationManager } from '@sudoplatform/sudo-common'
 import { DefaultSudoUserClient, SudoUserClient } from '@sudoplatform/sudo-user'
+import { AuthenticationStore } from '@sudoplatform/sudo-user/lib/core/auth-store'
 import { TESTAuthenticationProvider } from '@sudoplatform/sudo-user/lib/user/auth-provider'
 
 import { requireEnv } from '../../utils/require-env'
@@ -55,18 +56,37 @@ const testAuthProvider = new TESTAuthenticationProvider(
   env.REGISTER_KEY_ID,
 )
 
-export async function registerUser(): Promise<SudoUserClient> {
-  const logSpy = jest.spyOn(console, 'log').mockImplementation()
-  const userClient = new DefaultSudoUserClient(
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
+export async function registerUser(): Promise<{
+  userClient: SudoUserClient
+  authStore: AuthenticationStore
+}> {
+  const authStore = new AuthenticationStore()
+  const userClient = new DefaultSudoUserClient({
+    authenticationStore: authStore,
     logger,
-  )
+  })
+
   await userClient.registerWithAuthenticationProvider(testAuthProvider)
   await userClient.signInWithKey()
-  logSpy.mockRestore()
-  return userClient
+
+  return {
+    authStore,
+    userClient,
+  }
+}
+
+export async function invalidateAuthTokens(
+  authStore: AuthenticationStore,
+  userClient: SudoUserClient,
+): Promise<void> {
+  // Get current tokens
+  const idToken = authStore.getItem('idToken')!
+  const refreshToken = authStore.getItem('refreshToken')!
+
+  // Do global signout to invalidate the tokens
+  await userClient.globalSignOut() // this clears auth store
+
+  // Restore tokens to auth store so we can try and use them
+  await authStore.setItem('idToken', idToken)
+  await authStore.setItem('refreshToken', refreshToken)
 }

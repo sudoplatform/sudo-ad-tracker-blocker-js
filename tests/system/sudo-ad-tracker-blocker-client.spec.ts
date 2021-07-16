@@ -14,7 +14,8 @@ import { registerUser } from './test-registration'
 
 let userClient: SudoUserClient
 beforeAll(async () => {
-  userClient = await registerUser()
+  const services = await registerUser()
+  userClient = services.userClient
   await initWasm((file) =>
     fs.readFileSync(path.resolve(__dirname, '../../wasm', file)),
   )
@@ -26,6 +27,7 @@ describe('SudoAdTrackerBlockerClient', () => {
       sudoUserClient: userClient,
       logger,
     })
+    await client.update()
 
     // Assert lists:
     const lists = await client.getActiveRulesets()

@@ -1,3 +1,6 @@
+import { NotAuthorizedError } from '@sudoplatform/sudo-common'
+import { CognitoIdentityCredentials } from 'aws-sdk/lib/core'
+
 import { RulesetFormat } from '../ruleset-provider'
 import { DefaultRulesetProvider } from './default-ruleset-provider'
 
@@ -74,20 +77,52 @@ jest.mock('aws-sdk/clients/s3', () => {
   })
 })
 
-jest.mock('aws-sdk/lib/core', () => ({
-  CognitoIdentityCredentials: jest.fn((props) => ({
-    props,
-    getPromise: jest.fn(),
-    clearCachedId: jest.fn(),
-  })),
-}))
+jest.mock('aws-sdk/lib/core', () => {
+  const CognitoIdentityCredentials = Object.assign(
+    jest.fn((props) => ({
+      props,
+      getPromise: jest.fn().mockImplementation(async () => {
+        if (CognitoIdentityCredentials.alwaysThrowAuthError) {
+          throw CognitoIdentityCredentials.alwaysThrowAuthError
+        }
+      }),
+      clearCachedId: jest.fn(),
+    })),
+    {
+      alwaysThrowAuthError: undefined,
+    },
+  )
+
+  return {
+    CognitoIdentityCredentials,
+  }
+})
 
 const mockUserClient = {
   getLatestAuthToken: jest.fn(),
 }
 
+beforeEach(() => {
+  ;(CognitoIdentityCredentials as any).alwaysThrowAuthError = undefined
+})
+
 describe('DefaultRuleSetProvider', () => {
   describe('listRuleSets()', () => {
+    it('should throw NotAuthorizedError', async () => {
+      ;(CognitoIdentityCredentials as any).alwaysThrowAuthError = {
+        code: 'NotAuthorizedException',
+      }
+
+      const provider = new DefaultRulesetProvider({
+        userClient: mockUserClient as any,
+        bucket: 'BUCKET',
+        poolId: 'POOL',
+        identityPoolId: 'ID_POOL',
+      })
+
+      await expect(provider.listRulesets()).rejects.toThrow(NotAuthorizedError)
+    })
+
     it('should return metadata for all rulesets - AdblockPlus', async () => {
       const provider = new DefaultRulesetProvider({
         userClient: mockUserClient as any,
@@ -145,6 +180,25 @@ describe('DefaultRuleSetProvider', () => {
           updatedAt: new Date('2020-02-03T00:00:00Z'),
         },
       ])
+    })
+  })
+
+  describe('downloadRuleset', () => {
+    it('should throw NotAuthorizedError', async () => {
+      ;(CognitoIdentityCredentials as any).alwaysThrowAuthError = {
+        code: 'NotAuthorizedException',
+      }
+
+      const provider = new DefaultRulesetProvider({
+        userClient: mockUserClient as any,
+        bucket: 'BUCKET',
+        poolId: 'POOL',
+        identityPoolId: 'ID_POOL',
+      })
+
+      await expect(provider.downloadRuleset('meh')).rejects.toThrow(
+        NotAuthorizedError,
+      )
     })
 
     it('should download ruleset data with no cache', async () => {

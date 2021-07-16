@@ -1,3 +1,4 @@
+import { NotAuthorizedError } from '@sudoplatform/sudo-common'
 import { SudoUserClient } from '@sudoplatform/sudo-user'
 import S3 from 'aws-sdk/clients/s3'
 import { CognitoIdentityCredentials } from 'aws-sdk/lib/core'
@@ -118,7 +119,15 @@ export class DefaultRulesetProvider implements RulesetProvider {
 
     credentials.clearCachedId()
 
-    await credentials.getPromise()
+    try {
+      await credentials.getPromise()
+    } catch (error) {
+      if (error.code === 'NotAuthorizedException') {
+        throw new NotAuthorizedError()
+      }
+
+      throw error
+    }
 
     return new S3({
       region: s3Region,
