@@ -154,9 +154,7 @@ export class SudoAdTrackerBlockerClient {
 
     this.config =
       props?.config ??
-      DefaultConfigurationManager.getInstance().bindConfigSet<IotsConfig>(
-        IotsConfig,
-      )
+      DefaultConfigurationManager.getInstance().bindConfigSet(IotsConfig)
 
     if (props.rulesetProvider && props.format) {
       throw new Error(
@@ -172,7 +170,8 @@ export class SudoAdTrackerBlockerClient {
         userClient: props.sudoUserClient,
         poolId: this.config.identityService.poolId,
         identityPoolId: this.config.identityService.identityPoolId,
-        bucket: this.config.identityService.staticDataBucket,
+        bucket: this.config.adTrackerBlockerService.bucket,
+        bucketRegion: this.config.adTrackerBlockerService.region,
         format: props.format ?? RulesetFormat.AdBlockPlus,
       })
   }

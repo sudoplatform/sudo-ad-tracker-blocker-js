@@ -8,37 +8,37 @@ jest.mock('aws-sdk/clients/s3', () => {
   const buckets = {
     BUCKET: [
       {
-        Key: '/ad-tracker-blocker/filter-lists/adblock-plus/AD/list1.txt',
+        Key: '/filter-lists/adblock-plus/AD/list1.txt',
         Body: Buffer.from('LIST1', 'utf8'),
         ETag: 'etag1',
         LastModified: new Date('2020-01-01T00:00:00Z'),
       },
       {
-        Key: '/ad-tracker-blocker/filter-lists/adblock-plus/PRIVACY/list2.txt',
+        Key: '/filter-lists/adblock-plus/PRIVACY/list2.txt',
         Body: Buffer.from('LIST2', 'utf8'),
         ETag: 'etag2',
         LastModified: new Date('2020-01-02T00:00:00Z'),
       },
       {
-        Key: '/ad-tracker-blocker/filter-lists/adblock-plus/SOCIAL/list3.txt',
+        Key: '/filter-lists/adblock-plus/SOCIAL/list3.txt',
         Body: Buffer.from('LIST3', 'utf8'),
         ETag: 'etag3',
         LastModified: new Date('2020-01-03T00:00:00Z'),
       },
       {
-        Key: '/ad-tracker-blocker/filter-lists/apple/AD/list1.json',
+        Key: '/filter-lists/apple/AD/list1.json',
         Body: Buffer.from('LIST1-APPLE', 'utf8'),
         ETag: 'etag1',
         LastModified: new Date('2020-02-01T00:00:00Z'),
       },
       {
-        Key: '/ad-tracker-blocker/filter-lists/apple/PRIVACY/list2.json',
+        Key: '/filter-lists/apple/PRIVACY/list2.json',
         Body: Buffer.from('LIST2-APPLE', 'utf8'),
         ETag: 'etag2',
         LastModified: new Date('2020-02-02T00:00:00Z'),
       },
       {
-        Key: '/ad-tracker-blocker/filter-lists/apple/SOCIAL/list3.json',
+        Key: '/filter-lists/apple/SOCIAL/list3.json',
         Body: Buffer.from('LIST3-APPLE', 'utf8'),
         ETag: 'etag3',
         LastModified: new Date('2020-02-03T00:00:00Z'),
@@ -106,6 +106,14 @@ beforeEach(() => {
   ;(CognitoIdentityCredentials as any).alwaysThrowAuthError = undefined
 })
 
+const testProps = {
+  userClient: mockUserClient as any,
+  bucket: 'BUCKET',
+  bucketRegion: 'REGION',
+  poolId: 'POOL',
+  identityPoolId: 'ID_POOL',
+}
+
 describe('DefaultRuleSetProvider', () => {
   describe('listRuleSets()', () => {
     it('should throw NotAuthorizedError', async () => {
@@ -113,26 +121,16 @@ describe('DefaultRuleSetProvider', () => {
         code: 'NotAuthorizedException',
       }
 
-      const provider = new DefaultRulesetProvider({
-        userClient: mockUserClient as any,
-        bucket: 'BUCKET',
-        poolId: 'POOL',
-        identityPoolId: 'ID_POOL',
-      })
+      const provider = new DefaultRulesetProvider(testProps)
 
       await expect(provider.listRulesets()).rejects.toThrow(NotAuthorizedError)
     })
 
     it('should return metadata for all rulesets - AdblockPlus', async () => {
-      const provider = new DefaultRulesetProvider({
-        userClient: mockUserClient as any,
-        bucket: 'BUCKET',
-        poolId: 'POOL',
-        identityPoolId: 'ID_POOL',
-      })
+      const provider = new DefaultRulesetProvider(testProps)
 
       const result = await provider.listRulesets()
-      const expectedPrefix = '/ad-tracker-blocker/filter-lists/adblock-plus'
+      const expectedPrefix = '/filter-lists/adblock-plus'
       expect(result).toEqual([
         {
           location: `${expectedPrefix}/AD/list1.txt`,
@@ -154,15 +152,12 @@ describe('DefaultRuleSetProvider', () => {
 
     it('should return metadata for all rulesets - Apple', async () => {
       const provider = new DefaultRulesetProvider({
-        userClient: mockUserClient as any,
-        bucket: 'BUCKET',
-        poolId: 'POOL',
-        identityPoolId: 'ID_POOL',
+        ...testProps,
         format: RulesetFormat.Apple,
       })
 
       const result = await provider.listRulesets()
-      const expectedPrefix = '/ad-tracker-blocker/filter-lists/apple'
+      const expectedPrefix = '/filter-lists/apple'
       expect(result).toEqual([
         {
           location: `${expectedPrefix}/AD/list1.json`,
@@ -189,12 +184,7 @@ describe('DefaultRuleSetProvider', () => {
         code: 'NotAuthorizedException',
       }
 
-      const provider = new DefaultRulesetProvider({
-        userClient: mockUserClient as any,
-        bucket: 'BUCKET',
-        poolId: 'POOL',
-        identityPoolId: 'ID_POOL',
-      })
+      const provider = new DefaultRulesetProvider(testProps)
 
       await expect(provider.downloadRuleset('meh')).rejects.toThrow(
         NotAuthorizedError,
@@ -202,30 +192,20 @@ describe('DefaultRuleSetProvider', () => {
     })
 
     it('should download ruleset data with no cache', async () => {
-      const provider = new DefaultRulesetProvider({
-        userClient: mockUserClient as any,
-        bucket: 'BUCKET',
-        poolId: 'POOL',
-        identityPoolId: 'ID_POOL',
-      })
+      const provider = new DefaultRulesetProvider(testProps)
 
       const result = await provider.downloadRuleset(
-        '/ad-tracker-blocker/filter-lists/adblock-plus/AD/list1.txt',
+        '/filter-lists/adblock-plus/AD/list1.txt',
       )
 
       expect(result).toEqual({ cacheKey: 'etag1', data: 'LIST1' })
     })
 
     it('should download ruleset data with cache key miss', async () => {
-      const provider = new DefaultRulesetProvider({
-        userClient: mockUserClient as any,
-        bucket: 'BUCKET',
-        poolId: 'POOL',
-        identityPoolId: 'ID_POOL',
-      })
+      const provider = new DefaultRulesetProvider(testProps)
 
       const result = await provider.downloadRuleset(
-        '/ad-tracker-blocker/filter-lists/adblock-plus/AD/list1.txt',
+        '/filter-lists/adblock-plus/AD/list1.txt',
         'OLD_ETAG',
       )
 
@@ -233,15 +213,10 @@ describe('DefaultRuleSetProvider', () => {
     })
 
     it('should not download rules with cache key hit', async () => {
-      const provider = new DefaultRulesetProvider({
-        userClient: mockUserClient as any,
-        bucket: 'BUCKET',
-        poolId: 'POOL',
-        identityPoolId: 'ID_POOL',
-      })
+      const provider = new DefaultRulesetProvider(testProps)
 
       const result = await provider.downloadRuleset(
-        '/ad-tracker-blocker/filter-lists/adblock-plus/AD/list1.txt',
+        '/filter-lists/adblock-plus/AD/list1.txt',
         'etag1',
       )
       expect(result).toEqual('not-modified')

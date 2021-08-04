@@ -11,14 +11,18 @@ license = "Apache-2.0"
 [lib]
 crate-type = ["cdylib"]
 
+[profile.dev]
+# Enable basic optimizations to avoid "locals exceed maximum" error.
+opt-level = 1
+
 [profile.release]
 lto = true
 
 [dependencies]
 wasm-bindgen = "^ 0.2"
-adblock = "0.3.3"
+adblock = "0.3.15"
 console_error_panic_hook = "0.1.6"
 
 [dependencies.web-sys]
-version = "0.3.22"
+version = "0.3.52"
 features = ["console"]

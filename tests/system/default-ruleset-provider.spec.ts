@@ -4,7 +4,10 @@ import { AuthenticationStore } from '@sudoplatform/sudo-user/lib/core/auth-store
 
 import { RulesetContent } from '../../lib/ruleset-provider'
 import { RulesetFormat } from '../../lib/ruleset-provider'
-import { DefaultRulesetProvider } from '../../lib/ruleset-providers/default-ruleset-provider'
+import {
+  DefaultRulesetProvider,
+  DefaultRulesetProviderProps,
+} from '../../lib/ruleset-providers/default-ruleset-provider'
 import {
   invalidateAuthTokens,
   registerUser,
@@ -13,23 +16,26 @@ import {
 
 let userClient: SudoUserClient
 let authStore: AuthenticationStore
+let testProps: DefaultRulesetProviderProps
 
 beforeEach(async () => {
   const services = await registerUser()
   authStore = services.authStore
   userClient = services.userClient
+  testProps = {
+    userClient,
+    poolId: sdkConfig.identityService.poolId,
+    identityPoolId: sdkConfig.identityService.identityPoolId,
+    bucket: sdkConfig.adTrackerBlockerService.bucket,
+    bucketRegion: sdkConfig.adTrackerBlockerService.region,
+  }
 })
 
 describe('DefaultRulesetProvider', () => {
   it('listRulesets should throw NotAuthorizedError', async () => {
     await invalidateAuthTokens(authStore, userClient)
 
-    const ruleSetProvider = new DefaultRulesetProvider({
-      userClient,
-      poolId: sdkConfig.identityService.poolId,
-      identityPoolId: sdkConfig.identityService.identityPoolId,
-      bucket: sdkConfig.identityService.staticDataBucket,
-    })
+    const ruleSetProvider = new DefaultRulesetProvider(testProps)
 
     await expect(ruleSetProvider.listRulesets()).rejects.toThrow(
       NotAuthorizedError,
@@ -37,16 +43,11 @@ describe('DefaultRulesetProvider', () => {
   })
 
   it('should list rule sets', async () => {
-    const ruleSetProvider = new DefaultRulesetProvider({
-      userClient,
-      poolId: sdkConfig.identityService.poolId,
-      identityPoolId: sdkConfig.identityService.identityPoolId,
-      bucket: sdkConfig.identityService.staticDataBucket,
-    })
+    const ruleSetProvider = new DefaultRulesetProvider(testProps)
 
     const result = await ruleSetProvider.listRulesets()
 
-    const expectedPrefix = '/ad-tracker-blocker/filter-lists/adblock-plus'
+    const expectedPrefix = '/filter-lists/adblock-plus'
     expect(result).toEqual([
       {
         type: 'ad-blocking',
@@ -69,12 +70,7 @@ describe('DefaultRulesetProvider', () => {
   it('downloadRuleset should throw NotAuthorizedError', async () => {
     await invalidateAuthTokens(authStore, userClient)
 
-    const ruleSetProvider = new DefaultRulesetProvider({
-      userClient,
-      poolId: sdkConfig.identityService.poolId,
-      identityPoolId: sdkConfig.identityService.identityPoolId,
-      bucket: sdkConfig.identityService.staticDataBucket,
-    })
+    const ruleSetProvider = new DefaultRulesetProvider(testProps)
 
     await expect(
       ruleSetProvider.downloadRuleset('not-important'),
@@ -84,15 +80,10 @@ describe('DefaultRulesetProvider', () => {
   it('should download rule sets', async () => {
     const eTagRegex = /"[0-9a-f]*"$/
 
-    const ruleSetProvider = new DefaultRulesetProvider({
-      userClient,
-      poolId: sdkConfig.identityService.poolId,
-      identityPoolId: sdkConfig.identityService.identityPoolId,
-      bucket: sdkConfig.identityService.staticDataBucket,
-    })
+    const ruleSetProvider = new DefaultRulesetProvider(testProps)
 
     const result = await ruleSetProvider.downloadRuleset(
-      '/ad-tracker-blocker/filter-lists/adblock-plus/AD/easylist.txt',
+      '/filter-lists/adblock-plus/AD/easylist.txt',
     )
 
     if (result === 'not-modified') fail()
@@ -101,18 +92,13 @@ describe('DefaultRulesetProvider', () => {
   })
 
   it('should not download if etag has not changed', async () => {
-    const ruleSetProvider = new DefaultRulesetProvider({
-      userClient,
-      poolId: sdkConfig.identityService.poolId,
-      identityPoolId: sdkConfig.identityService.identityPoolId,
-      bucket: sdkConfig.identityService.staticDataBucket,
-    })
+    const ruleSetProvider = new DefaultRulesetProvider(testProps)
 
     const result1 = await ruleSetProvider.downloadRuleset(
-      '/ad-tracker-blocker/filter-lists/adblock-plus/AD/easylist.txt',
+      '/filter-lists/adblock-plus/AD/easylist.txt',
     )
     const result2 = await ruleSetProvider.downloadRuleset(
-      '/ad-tracker-blocker/filter-lists/adblock-plus/AD/easylist.txt',
+      '/filter-lists/adblock-plus/AD/easylist.txt',
       (result1 as RulesetContent).cacheKey,
     )
 
@@ -121,16 +107,13 @@ describe('DefaultRulesetProvider', () => {
 
   it('should list Apple rulesets', async () => {
     const ruleSetProvider = new DefaultRulesetProvider({
-      userClient,
-      poolId: sdkConfig.identityService.poolId,
-      identityPoolId: sdkConfig.identityService.identityPoolId,
-      bucket: sdkConfig.identityService.staticDataBucket,
+      ...testProps,
       format: RulesetFormat.Apple,
     })
 
     const result = await ruleSetProvider.listRulesets()
 
-    const expectedPrefix = '/ad-tracker-blocker/filter-lists/apple'
+    const expectedPrefix = '/filter-lists/apple'
     expect(result).toEqual([
       {
         type: 'ad-blocking',
@@ -154,15 +137,12 @@ describe('DefaultRulesetProvider', () => {
     const eTagRegex = /"[0-9a-f]*"$/
 
     const ruleSetProvider = new DefaultRulesetProvider({
-      userClient,
-      poolId: sdkConfig.identityService.poolId,
-      identityPoolId: sdkConfig.identityService.identityPoolId,
-      bucket: sdkConfig.identityService.staticDataBucket,
+      ...testProps,
       format: RulesetFormat.Apple,
     })
 
     const result = await ruleSetProvider.downloadRuleset(
-      '/ad-tracker-blocker/filter-lists/apple/AD/easylist.json',
+      '/filter-lists/apple/AD/easylist.json',
     )
 
     if (result === 'not-modified') fail()

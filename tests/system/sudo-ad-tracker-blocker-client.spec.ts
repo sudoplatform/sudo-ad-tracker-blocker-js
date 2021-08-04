@@ -42,7 +42,9 @@ describe('SudoAdTrackerBlockerClient', () => {
     expect(client.checkUrl('https://example.com/!advert_')).toEqual('blocked')
 
     // Test privacy rule from easyprivacy:
-    expect(client.checkUrl('https://example.com/admp-')).toEqual('blocked')
+    expect(client.checkUrl('https://example.com/event/fingerprint')).toEqual(
+      'blocked',
+    )
 
     // Test social rule from fanboysocial:
     expect(client.checkUrl('https://example.com/button-fb.')).toEqual('blocked')

@@ -11,8 +11,7 @@ import {
 } from '../ruleset-provider'
 import { RulesetType } from '../ruleset-type'
 
-const s3Region = 'us-east-1'
-const s3Prefix = '/ad-tracker-blocker/filter-lists/'
+const s3Prefix = '/filter-lists/'
 
 const serviceTypeToRuleSetTypeLookup: Record<string, RulesetType> = {
   AD: RulesetType.AdBlocking,
@@ -20,18 +19,19 @@ const serviceTypeToRuleSetTypeLookup: Record<string, RulesetType> = {
   SOCIAL: RulesetType.Social,
 }
 
-interface Props {
+export interface DefaultRulesetProviderProps {
   userClient: SudoUserClient
   poolId: string
   identityPoolId: string
   bucket: string
+  bucketRegion: string
   format?: RulesetFormat
 }
 
 export class DefaultRulesetProvider implements RulesetProvider {
   public readonly format: RulesetFormat
 
-  constructor(private props: Props) {
+  constructor(private props: DefaultRulesetProviderProps) {
     this.format = props.format ?? RulesetFormat.AdBlockPlus
   }
 
@@ -130,7 +130,7 @@ export class DefaultRulesetProvider implements RulesetProvider {
     }
 
     return new S3({
-      region: s3Region,
+      region: this.props.bucketRegion,
       credentials: credentials,
     })
   }
