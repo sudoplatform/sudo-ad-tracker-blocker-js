@@ -1,5 +1,6 @@
 import { NotAuthorizedError } from '@sudoplatform/sudo-common'
 import { SudoUserClient } from '@sudoplatform/sudo-user'
+import { AWSError } from 'aws-sdk'
 import S3 from 'aws-sdk/clients/s3'
 import { CognitoIdentityCredentials } from 'aws-sdk/lib/core'
 
@@ -85,7 +86,7 @@ export class DefaultRulesetProvider implements RulesetProvider {
         })
         .promise()
     } catch (error) {
-      if (error?.code === 'NotModified') {
+      if (isAWSError(error) && error.code === 'NotModified') {
         return 'not-modified'
       } else {
         throw error
@@ -122,7 +123,7 @@ export class DefaultRulesetProvider implements RulesetProvider {
     try {
       await credentials.getPromise()
     } catch (error) {
-      if (error.code === 'NotAuthorizedException') {
+      if (isAWSError(error) && error.code === 'NotAuthorizedException') {
         throw new NotAuthorizedError()
       }
 
@@ -134,4 +135,8 @@ export class DefaultRulesetProvider implements RulesetProvider {
       credentials: credentials,
     })
   }
+}
+
+function isAWSError(error: unknown): error is AWSError {
+  return typeof error === 'object' && error !== null && 'code' in error
 }

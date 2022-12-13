@@ -1,26 +1,25 @@
-import { NotAuthorizedError } from '@sudoplatform/sudo-common'
+import { NotAuthorizedError, SudoKeyManager } from '@sudoplatform/sudo-common'
 import { SudoUserClient } from '@sudoplatform/sudo-user'
-import { AuthenticationStore } from '@sudoplatform/sudo-user/lib/core/auth-store'
 
-import { RulesetContent } from '../../lib/ruleset-provider'
-import { RulesetFormat } from '../../lib/ruleset-provider'
+import { RulesetContent } from '../../src/ruleset-provider'
+import { RulesetFormat } from '../../src/ruleset-provider'
 import {
   DefaultRulesetProvider,
   DefaultRulesetProviderProps,
-} from '../../lib/ruleset-providers/default-ruleset-provider'
+} from '../../src/ruleset-providers/default-ruleset-provider'
 import {
   invalidateAuthTokens,
   registerUser,
   sdkConfig,
 } from './test-registration'
 
+let keyManager: SudoKeyManager
 let userClient: SudoUserClient
-let authStore: AuthenticationStore
 let testProps: DefaultRulesetProviderProps
 
 beforeEach(async () => {
   const services = await registerUser()
-  authStore = services.authStore
+  keyManager = services.keyManager
   userClient = services.userClient
   testProps = {
     userClient,
@@ -33,7 +32,7 @@ beforeEach(async () => {
 
 describe('DefaultRulesetProvider', () => {
   it('listRulesets should throw NotAuthorizedError', async () => {
-    await invalidateAuthTokens(authStore, userClient)
+    await invalidateAuthTokens(keyManager, userClient)
 
     const ruleSetProvider = new DefaultRulesetProvider(testProps)
 
@@ -68,7 +67,7 @@ describe('DefaultRulesetProvider', () => {
   })
 
   it('downloadRuleset should throw NotAuthorizedError', async () => {
-    await invalidateAuthTokens(authStore, userClient)
+    await invalidateAuthTokens(keyManager, userClient)
 
     const ruleSetProvider = new DefaultRulesetProvider(testProps)
 

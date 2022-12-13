@@ -1,10 +1,18 @@
 import fs from 'fs'
 import path from 'path'
 
-import { DefaultConfigurationManager } from '@sudoplatform/sudo-common'
-import { DefaultSudoUserClient, SudoUserClient } from '@sudoplatform/sudo-user'
-import { AuthenticationStore } from '@sudoplatform/sudo-user/lib/core/auth-store'
-import { TESTAuthenticationProvider } from '@sudoplatform/sudo-user/lib/user/auth-provider'
+import {
+  DefaultConfigurationManager,
+  DefaultSudoKeyManager,
+  KeyDataKeyType,
+  SudoKeyManager,
+} from '@sudoplatform/sudo-common'
+import {
+  DefaultSudoUserClient,
+  SudoUserClient,
+  TESTAuthenticationProvider,
+} from '@sudoplatform/sudo-user'
+import { WebSudoCryptoProvider } from '@sudoplatform/sudo-web-crypto-provider'
 
 import { requireEnv } from '../../utils/require-env'
 import { logger } from './logger'
@@ -57,36 +65,49 @@ const testAuthProvider = new TESTAuthenticationProvider(
 )
 
 export async function registerUser(): Promise<{
+  keyManager: SudoKeyManager
   userClient: SudoUserClient
-  authStore: AuthenticationStore
 }> {
-  const authStore = new AuthenticationStore()
+  const cryptoProvider = new WebSudoCryptoProvider('ns', 'atb-service')
+  const keyManager = new DefaultSudoKeyManager(cryptoProvider)
   const userClient = new DefaultSudoUserClient({
-    authenticationStore: authStore,
+    sudoKeyManager: keyManager,
     logger,
   })
 
   await userClient.registerWithAuthenticationProvider(testAuthProvider)
   await userClient.signInWithKey()
 
-  return {
-    authStore,
-    userClient,
-  }
+  return { userClient, keyManager }
 }
 
 export async function invalidateAuthTokens(
-  authStore: AuthenticationStore,
+  keyManager: SudoKeyManager,
   userClient: SudoUserClient,
 ): Promise<void> {
   // Get current tokens
-  const idToken = authStore.getItem('idToken')!
-  const refreshToken = authStore.getItem('refreshToken')!
+  const keyData = await keyManager.exportKeys()
 
   // Do global signout to invalidate the tokens
   await userClient.globalSignOut() // this clears auth store
 
-  // Restore tokens to auth store so we can try and use them
-  await authStore.setItem('idToken', idToken)
-  await authStore.setItem('refreshToken', refreshToken)
+  // Set tokens back
+  keyData.map((value) => {
+    switch (value.type) {
+      case KeyDataKeyType.SymmetricKey:
+        void keyManager.addSymmetricKey(value.data, value.name)
+        break
+      case KeyDataKeyType.RSAPublicKey:
+        void keyManager.addPublicKey(value.data, value.name)
+        break
+      case KeyDataKeyType.RSAPrivateKey:
+        void keyManager.addPrivateKey(value.data, value.name)
+        break
+      case KeyDataKeyType.Password:
+        void keyManager.addPassword(value.data, value.name)
+        break
+      default:
+        throw new Error(`Unknown KeyDataKeyType: ${value.type}`)
+    }
+  })
 }

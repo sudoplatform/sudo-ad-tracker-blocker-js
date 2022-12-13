@@ -73,11 +73,11 @@ function normalizePageException(source: string): FilterException {
 
   return {
     type: 'page',
-    source: `${urlParts.host}${urlParts.pathname}`,
+    source: `${urlParts.host}${urlParts.pathname ? urlParts.pathname : '/'}`,
   }
 }
 
-function getUrlParts(input: string): urlparse {
+function getUrlParts(input: string): urlparse<string> {
   input = input.trim().toLowerCase()
   const hasScheme = scheme.test(input)
 

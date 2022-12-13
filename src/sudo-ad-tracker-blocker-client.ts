@@ -138,7 +138,7 @@ export interface SudoAdTrackerBlockerClientProps {
  * This is the main class used for Ad/Tracker blocking.
  * Each instance of `SudoAdTrackerBlockerClient` will contain a filtering engine
  * that can be configured to use a set of blocking rulesets.
- * To query the filtering engine, you can call (@link SudoAdTrackerBlockerClient.checkUrl}.
+ * To query the filtering engine, you can call ({@link SudoAdTrackerBlockerClient.checkUrl}).
  */
 export class SudoAdTrackerBlockerClient {
   private _status: Status = Status.NeedsUpdate
@@ -208,7 +208,10 @@ export class SudoAdTrackerBlockerClient {
       this.logger.info('Filter engine is ready.')
       this.updateStatus(Status.Ready)
     } catch (error) {
-      this.logger.error('Error updating rulesets', error)
+      this.logger.error('Error updating rulesets', {
+        function: 'update',
+        error,
+      })
       this.updateStatus(Status.Error)
     }
   }
@@ -306,13 +309,16 @@ export class SudoAdTrackerBlockerClient {
 
   /**
    * Returns true if `url` and `currentUrl` match; false if not.
-   * @param url URL to test against current URL.
-   * @param currentUrl Current URL.
+   * @param url resource urls for ads. e.g. google-ad
+   * @param sourceUrl The URL of the site the resource urls are coming from.
    * @param resourceType
    */
   public checkUrl(
+    /** resource urls for ads. e.g. some-ad */
     url: string,
+    /** The URL of the site the resource urls are coming from e.g. anonyome.com */
     sourceUrl = '',
+    /** Either a `page` or `domain` */
     resourceType = '',
   ): CheckUrlResult {
     if (

@@ -1,10 +1,10 @@
 import { Logger } from '@sudoplatform/sudo-common'
 
 export const nullLogger: Logger = {
-  debug: () => undefined,
-  warn: () => undefined,
-  info: () => undefined,
-  error: () => undefined,
-  fatal: () => undefined,
-  trace: () => undefined,
+  debug: () => false,
+  warn: () => false,
+  info: () => false,
+  error: () => false,
+  fatal: () => false,
+  trace: () => false,
 }
