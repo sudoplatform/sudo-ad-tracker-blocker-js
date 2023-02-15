@@ -8,7 +8,7 @@ import {
   RulesetType,
   SudoAdTrackerBlockerClient,
   initWasm,
-} from '../../lib'
+} from '../../'
 import { logger } from './logger'
 import { registerUser } from './test-registration'
 
@@ -39,7 +39,7 @@ describe('SudoAdTrackerBlockerClient', () => {
 
     // Test ad blocking rule from easylist:
     await client.update()
-    expect(client.checkUrl('https://example.com/&AdType=')).toEqual('blocked')
+    expect(client.checkUrl('https://example.com/&adstype=')).toEqual('blocked')
 
     // Test privacy rule from easyprivacy:
     expect(client.checkUrl('https://example.com/event/fingerprint')).toEqual(
@@ -89,7 +89,7 @@ describe('SudoAdTrackerBlockerClient', () => {
     // This should be blocked due to AdBlocking ruleset:
     expect(
       client.checkUrl(
-        'https://example.com/&AdType=',
+        'https://example.com/&adstype=',
         'https://www.anonyome.com',
       ),
     ).toEqual('blocked')
@@ -106,7 +106,7 @@ describe('SudoAdTrackerBlockerClient', () => {
     // This should be now be allowed:
     expect(
       client.checkUrl(
-        'https://example.com/&AdType=',
+        'https://example.com/&adstype=',
         'https://www.anonyome.com',
       ),
     ).toEqual('allowed')
@@ -123,7 +123,7 @@ describe('SudoAdTrackerBlockerClient', () => {
     // Without whitelisting, this should be blocked:
     expect(
       client.checkUrl(
-        'https://example.com/&AdType=',
+        'https://example.com/&adstype=',
         'https://www.anonyome.com',
       ),
     ).toEqual('blocked')
@@ -134,7 +134,7 @@ describe('SudoAdTrackerBlockerClient', () => {
     // Now it should be not be blocked:
     expect(
       client.checkUrl(
-        'https://example.com/&AdType=',
+        'https://example.com/&adstype=',
         'https://www.anonyome.com',
       ),
     ).toEqual('allowed')

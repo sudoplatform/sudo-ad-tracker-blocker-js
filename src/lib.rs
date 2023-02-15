@@ -14,7 +14,10 @@ impl FilterEngine {
         console_error_panic_hook::set_once();
 
         let mut filter_set = adblock::lists::FilterSet::new(true);
-        filter_set.add_filter_list(&list, adblock::lists::FilterFormat::Standard);
+        let parse_options = adblock::lists::ParseOptions {
+          ..adblock::lists::ParseOptions::default()
+        };
+        filter_set.add_filter_list(&list, parse_options);
 
         FilterEngine { engine: adblock::engine::Engine::from_filter_set(filter_set, false) }
     }
