@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Sudo Platform proivdes powerful tools to block advertising and user tracking to create a safe browsing experience for your users.
+The Sudo Platform provides powerful tools to block advertising and user tracking to create a safe browsing experience for your users.
 
 Please see the [Sudo Platform Developer Docs](https://docs.sudoplatform.com) for an overview of Ad/Tracker Blocking in the Sudo Platform.
 
@@ -10,7 +10,7 @@ Please see the [Sudo Platform Developer Docs](https://docs.sudoplatform.com) for
 
 | Technology        | Supported version |
 | ----------------- | ----------------- |
-| Node              | >= 10.4.2         |
+| Node              | >= 20.18.0        |
 | Safari            | >= 14             |
 | Firefox           | last 2 versions   |
 | Chromium and Edge | last 2 versions   |

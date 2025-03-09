@@ -285,9 +285,8 @@ export class SudoAdTrackerBlockerClient {
    * of {@link SudoAdTrackerBlockerClient.checkUrl}.
    */
   public async getActiveRulesets(): Promise<RulesetType[]> {
-    const activeRulesetsJson = await this.storageProvider.getItem(
-      activeRulesetsKey,
-    )
+    const activeRulesetsJson =
+      await this.storageProvider.getItem(activeRulesetsKey)
 
     return activeRulesetsJson
       ? JSON.parse(activeRulesetsJson)
@@ -368,9 +367,8 @@ export class SudoAdTrackerBlockerClient {
    * the behavior of {@link SudoAdTrackerBlockerClient.checkUrl}.
    */
   public async getExceptions(): Promise<FilterException[]> {
-    const filterExceptionsJson = await this.storageProvider.getItem(
-      exceptionsStorageKey,
-    )
+    const filterExceptionsJson =
+      await this.storageProvider.getItem(exceptionsStorageKey)
     const filterExceptions = filterExceptionsJson
       ? JSON.parse(filterExceptionsJson)
       : []

@@ -15,11 +15,7 @@ module.exports = {
       parserOptions: {
         project: './tsconfig.json',
       },
-      extends: [
-        'plugin:@typescript-eslint/recommended',
-        'prettier',
-        'prettier/@typescript-eslint',
-      ],
+      extends: ['plugin:@typescript-eslint/recommended', 'prettier'],
       rules: {
         // Disallow `any`.  (This is overridden for test files, below)
         '@typescript-eslint/no-explicit-any': 'error',
