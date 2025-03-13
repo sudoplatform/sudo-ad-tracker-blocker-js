@@ -1,7 +1,7 @@
-import 'isomorphic-fetch'
-
-import '../src/runtimes/node/environment'
+Object.assign(global, {
+  document: {
+    baseURI: 'http://localhost/',
+  },
+})
 
 jest.setTimeout(60000)
-
-global.crypto = require('isomorphic-webcrypto')

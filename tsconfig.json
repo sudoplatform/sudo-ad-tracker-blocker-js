@@ -10,10 +10,11 @@
     "moduleResolution": "node",
     "outDir": "lib",
     "resolveJsonModule": true,
+    "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
     "target": "es2017"
   },
-  "include": ["src/**/*.ts", "pkg/**/*.ts", "tests/**/*.ts", "utils/**/*.ts"],
+  "include": ["src/**/*.ts", "pkg/**/*.ts", "utils/**/*.ts"],
   "exclude": ["node_modules"]
 }

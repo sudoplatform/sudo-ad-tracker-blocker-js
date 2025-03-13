@@ -20,32 +20,33 @@ import { logger } from './logger'
 const env = requireEnv({
   REGISTER_KEY: {
     type: 'string',
-    default: () =>
-      fs.readFileSync(
-        path.resolve(__dirname, `../../config/register_key.private`),
-        'ascii',
-      ),
+    default: path.resolve(__dirname, `../../config/register_key.private`),
   },
   REGISTER_KEY_ID: {
     type: 'string',
-    default: () =>
-      fs.readFileSync(
-        path.resolve(__dirname, `../../config/register_key.id`),
-        'ascii',
-      ),
+    default: path.resolve(__dirname, `../../config/register_key.id`),
   },
-  SDK_CONFIG: {
+  SUDO_PLATFORM_CONFIG: {
     type: 'string',
-    default: () =>
-      fs.readFileSync(
-        path.resolve(__dirname, `../../config/sudoplatformconfig.json`),
-        'utf8',
-      ),
+    default: path.resolve(__dirname, `../../config/sudoplatformconfig.json`),
   },
 })
 
+/**
+ * Read a config value obtained from the environment.
+ * If file is specified, load from the file.
+ * This supports both File and Var GitLab CI Variable types.
+ */
+function readConfigValue(value: string) {
+  if (fs.existsSync(value)) {
+    return fs.readFileSync(value, 'utf8')
+  } else {
+    return value
+  }
+}
+
 export const sdkConfig = {
-  ...JSON.parse(env.SDK_CONFIG),
+  ...JSON.parse(readConfigValue(env.SUDO_PLATFORM_CONFIG)),
   federatedSignIn: {
     appClientId: 'n/a',
     refreshTokenLifetime: 0,
@@ -56,13 +57,13 @@ export const sdkConfig = {
   },
 }
 
-DefaultConfigurationManager.getInstance().setConfig(JSON.stringify(sdkConfig))
-
 const testAuthProvider = new TESTAuthenticationProvider(
   'system-test',
-  env.REGISTER_KEY,
-  env.REGISTER_KEY_ID,
+  readConfigValue(env.REGISTER_KEY),
+  readConfigValue(env.REGISTER_KEY_ID),
 )
+
+DefaultConfigurationManager.getInstance().setConfig(JSON.stringify(sdkConfig))
 
 export async function registerUser(): Promise<{
   keyManager: SudoKeyManager
